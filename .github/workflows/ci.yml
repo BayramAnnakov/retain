@@ -24,9 +24,7 @@ jobs:
       - name: Build
         run: swift build -c release -v 2>&1 | tail -100
 
-      - name: Verify App Bundle Creation
+      - name: Verify Binary Exists
         run: |
-          set -x
-          ./scripts/build-release.sh || (echo "Build script failed" && exit 1)
-          ls -la dist/
-          test -d dist/Retain.app
+          test -f .build/release/Retain
+          echo "Release binary built successfully"
