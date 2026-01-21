@@ -207,7 +207,7 @@ actor SyncService {
     private static let fileModDatesKey = "Retain.SyncService.fileModificationDates"
     /// UserDefaults key for Claude Code parser version (force resync on format changes)
     private static let claudeCodeParserVersionKey = "Retain.SyncService.claudeCodeParserVersion"
-    private static let claudeCodeParserVersion = 2
+    private static let claudeCodeParserVersion = 3  // Bumped: strip XML metadata tags from titles/previews
 
     /// Cached file modification dates (path -> modification date)
     private var fileModificationDates: [String: Date]?
