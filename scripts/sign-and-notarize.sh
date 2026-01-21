@@ -70,14 +70,38 @@ echo ""
 echo "=== Verifying Gatekeeper ==="
 spctl -a -vv "$DIST_DIR/$APP_NAME.app" 2>&1
 
-# Recreate DMG with notarized app
+# Recreate DMG with notarized app (with Applications link)
 echo ""
 echo "=== Creating notarized DMG ==="
 rm -f "$DIST_DIR/$APP_NAME-$VERSION.dmg"
-hdiutil create -volname "$APP_NAME" \
-    -srcfolder "$DIST_DIR/$APP_NAME.app" \
-    -ov -format UDZO \
-    "$DIST_DIR/$APP_NAME-$VERSION.dmg"
+
+if command -v create-dmg &> /dev/null; then
+    ICON_PATH="$DIST_DIR/$APP_NAME.app/Contents/Resources/AppIcon.icns"
+    ICON_ARGS=""
+    if [ -f "$ICON_PATH" ]; then
+        ICON_ARGS="--volicon $ICON_PATH"
+    fi
+
+    create-dmg \
+        --volname "$APP_NAME" \
+        $ICON_ARGS \
+        --window-pos 200 120 \
+        --window-size 600 400 \
+        --icon-size 100 \
+        --icon "$APP_NAME.app" 150 185 \
+        --hide-extension "$APP_NAME.app" \
+        --app-drop-link 450 185 \
+        --no-internet-enable \
+        "$DIST_DIR/$APP_NAME-$VERSION.dmg" \
+        "$DIST_DIR/$APP_NAME.app"
+else
+    echo "Warning: create-dmg not found, using hdiutil (no Applications link)"
+    echo "Install with: brew install create-dmg"
+    hdiutil create -volname "$APP_NAME" \
+        -srcfolder "$DIST_DIR/$APP_NAME.app" \
+        -ov -format UDZO \
+        "$DIST_DIR/$APP_NAME-$VERSION.dmg"
+fi
 
 # Recreate zip with notarized app
 echo ""
