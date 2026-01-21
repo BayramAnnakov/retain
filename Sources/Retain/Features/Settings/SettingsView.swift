@@ -3,7 +3,14 @@ import SwiftUI
 /// App settings view with sidebar navigation (System Preferences style)
 struct SettingsView: View {
     @EnvironmentObject private var appState: AppState
-    @State private var selectedTab: SettingsTab = .general
+    @Environment(\.dismiss) private var dismiss
+    @State private var selectedTab: SettingsTab
+    var showCloseButton: Bool = false
+
+    init(initialTab: SettingsTab = .general, showCloseButton: Bool = false) {
+        _selectedTab = State(initialValue: initialTab)
+        self.showCloseButton = showCloseButton
+    }
 
     enum SettingsTab: String, CaseIterable, Identifiable {
         case general = "General"
@@ -66,6 +73,15 @@ struct SettingsView: View {
             .frame(minWidth: 480)
         }
         .frame(minWidth: 600, idealWidth: 700, maxWidth: 900, minHeight: 450, idealHeight: 500, maxHeight: 700)
+        .toolbar {
+            if showCloseButton {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
     }
 }
 

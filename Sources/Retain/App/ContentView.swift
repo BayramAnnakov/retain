@@ -349,12 +349,15 @@ struct SidebarView: View {
         case .learnings:
             appState.activeView = .learnings
             appState.clearFilter()
+            appState.clearSelection()  // Clear conversation filter so all learnings show
         case .analytics:
             appState.activeView = .analytics
             appState.clearFilter()
+            appState.clearSelection()
         case .automation:
             appState.activeView = .automation
             appState.clearFilter()
+            appState.clearSelection()
         case .none:
             appState.activeView = .conversationList
             appState.clearFilter()
@@ -537,7 +540,7 @@ struct SidebarFooter: View {
         }
         .background(AppColors.background)
         .sheet(isPresented: $showingSettingsSheet) {
-            SettingsView()
+            SettingsView(showCloseButton: true)
                 .environmentObject(appState)
         }
     }
@@ -1009,7 +1012,7 @@ struct EmptyConversationListView: View {
             }
         }
         .sheet(isPresented: $showingSettingsSheet) {
-            SettingsView()
+            SettingsView(initialTab: .webAccounts, showCloseButton: true)
                 .environmentObject(appState)
         }
     }
@@ -1092,17 +1095,7 @@ struct EmptyConversationListView: View {
     }
 
     private func openSettings() {
-        let bundlePath = Bundle.main.bundleURL.path
-        let isSwiftPMBuild = bundlePath.contains(".build") || bundlePath.contains("swiftpm")
-        if isSwiftPMBuild {
-            showingSettingsSheet = true
-            return
-        }
-
-        let didOpen = NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-        if !didOpen {
-            showingSettingsSheet = true
-        }
+        showingSettingsSheet = true
     }
 }
 

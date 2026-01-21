@@ -499,9 +499,16 @@ final class ChatGPTWebSync {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36", forHTTPHeaderField: "User-Agent")
 
-        // Add cookies from session
+        // Add cookies from session - only essential auth cookies to avoid 431 error
         let cookies = sessionStorage.getCookies(for: .chatgptWeb)
-        let cookieHeader = cookies.map { "\($0.name)=\($0.value)" }.joined(separator: "; ")
+        let essentialCookies = cookies.filter { cookie in
+            // ChatGPT auth cookies
+            cookie.name.contains("session-token") ||
+            cookie.name.contains("csrf-token") ||
+            cookie.name == "__cf_bm" ||  // Cloudflare bot management
+            cookie.name == "cf_clearance"  // Cloudflare clearance
+        }
+        let cookieHeader = essentialCookies.map { "\($0.name)=\($0.value)" }.joined(separator: "; ")
         request.setValue(cookieHeader, forHTTPHeaderField: "Cookie")
         if let accessToken, !accessToken.isEmpty {
             request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")

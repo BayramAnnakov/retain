@@ -6,6 +6,14 @@
 
 > A unified knowledge base for your AI conversations. Search, learn, and reflect across Claude Code, claude.ai, ChatGPT, and more.
 
+<p align="center">
+  <img src="docs/screenshots/conversations.png" width="800" alt="Conversation Browser">
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/analytics.png" width="800" alt="Analytics Dashboard">
+</p>
+
 From the creator of [claude-reflect](https://github.com/BayramAnnakov/claude-reflect) (300+ stars) - this is the evolution: a native macOS app that aggregates *all* your AI conversations, extracts learnings, and helps you build persistent context.
 
 ## What It Does
