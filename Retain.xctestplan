@@ -1,0 +1,38 @@
+{
+  "configurations" : [
+    {
+      "id" : "B19A08AF-E0A3-4AD3-B929-5FDBF6A1C792",
+      "name" : "Configuration 1",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "codeCoverage" : false,
+    "environmentVariableEntries" : [
+      {
+        "key" : "hasCompletedOnboarding",
+        "value" : "YES"
+      }
+    ],
+    "language" : "en",
+    "maximumTestExecutionTimeAllowance" : 300,
+    "maximumTestRepetitions" : 1,
+    "region" : "US",
+    "testExecutionOrdering" : "alphabetical",
+    "testRepetitionMode" : "none",
+    "testTimeoutsEnabled" : true
+  },
+  "testTargets" : [
+    {
+      "parallelizable" : false,
+      "target" : {
+        "containerPath" : "container:Retain.xcodeproj",
+        "identifier" : "RetainUITests",
+        "name" : "RetainUITests"
+      }
+    }
+  ],
+  "version" : 1
+}
