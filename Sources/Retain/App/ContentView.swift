@@ -366,22 +366,21 @@ struct SidebarView: View {
 
     // MARK: - Setup Progress
 
-    /// Calculate setup progress based on connected providers and learnings
+    /// Calculate setup progress based on connected providers
     private var setupProgress: Double {
         var progress = 0.0
         let conversations = appState.conversations
-        if conversations.contains(where: { $0.provider == .claudeCode }) { progress += 0.25 }
-        if conversations.contains(where: { $0.provider == .claudeWeb }) { progress += 0.25 }
-        if conversations.contains(where: { $0.provider == .chatgptWeb }) { progress += 0.25 }
-        if !appState.conversationIdsWithLearnings.isEmpty { progress += 0.25 }
-        return progress
+        // Each provider contributes ~33% to setup progress
+        if conversations.contains(where: { $0.provider == .claudeCode }) { progress += 1.0 / 3.0 }
+        if conversations.contains(where: { $0.provider == .claudeWeb }) { progress += 1.0 / 3.0 }
+        if conversations.contains(where: { $0.provider == .chatgptWeb }) { progress += 1.0 / 3.0 }
+        return min(progress, 1.0)
     }
 
     /// Contextual hint for the next setup step
     private var setupHint: String {
         if setupProgress == 0 { return "Click Sync to import conversations" }
-        if setupProgress < 0.5 { return "Connect more providers in Settings" }
-        if setupProgress < 1.0 { return "Review pending learnings" }
+        if setupProgress < 1.0 { return "Connect more providers in Settings" }
         return "Setup complete!"
     }
 
