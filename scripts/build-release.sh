@@ -32,7 +32,10 @@ echo "Creating app bundle..."
 cp "$BUILD_DIR/$APP_NAME" "$APP_BUNDLE/Contents/MacOS/"
 
 # Generate app icon (skip in CI - requires GUI context)
-if [ -z "$CI" ]; then
+# GitHub Actions sets CI=true and GITHUB_ACTIONS=true
+if [ "$CI" = "true" ] || [ "$GITHUB_ACTIONS" = "true" ]; then
+    echo "Skipping icon generation in CI (requires GUI context)"
+else
     echo "Generating app icon..."
     chmod +x "$SCRIPT_DIR/generate-icon.swift"
     swift "$SCRIPT_DIR/generate-icon.swift" "$DIST_DIR"
@@ -43,8 +46,6 @@ if [ -z "$CI" ]; then
         rm -rf "$DIST_DIR/AppIcon.iconset"
         echo "App icon created: AppIcon.icns"
     fi
-else
-    echo "Skipping icon generation in CI (requires GUI context)"
 fi
 
 # Create Info.plist
