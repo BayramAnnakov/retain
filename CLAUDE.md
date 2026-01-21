@@ -183,3 +183,10 @@ migrator.registerMigration("v2_feature") { db in
 - Dock icon set programmatically via `NSApplication.shared.applicationIconImage`
 - Web sessions stored in Keychain, expire after ~30 days
 - Learning extraction uses regex patterns in `CorrectionDetector`
+
+## Release & Distribution
+
+- **Xcode 15.4+ required**: `nonisolated(unsafe)` syntax requires Swift 5.10; CI workflows must use Xcode 15.4+
+- **CI should NOT upload release assets**: Release workflows overwrite manually notarized builds; use verify-only CI for notarized apps
+- **DMG with Applications link**: Use `create-dmg --app-drop-link` or manually `ln -s /Applications` before `hdiutil create`
+- **Notarization is on the .app**: The notarization ticket is stapled to the app bundle, not the DMG; recreating the DMG preserves notarization
