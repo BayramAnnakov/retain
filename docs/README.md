@@ -2,15 +2,6 @@
 
 Retain is a native macOS application that aggregates AI conversations from multiple platforms into a unified, searchable knowledge base with intelligent learning extraction.
 
-## Table of Contents
-
-1. [Architecture Overview](./ARCHITECTURE.md)
-2. [Data Sources](./DATA_SOURCES.md)
-3. [Search System](./SEARCH.md)
-4. [Learning Extraction](./LEARNING.md)
-5. [Web Sync Engine](./WEB_SYNC.md)
-6. [Development Guide](./DEVELOPMENT.md)
-
 ## Quick Start
 
 ### Requirements
