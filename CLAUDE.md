@@ -186,7 +186,28 @@ migrator.registerMigration("v2_feature") { db in
 
 ## Release & Distribution
 
+### Release Workflow
+
+```bash
+# 1. Build release
+./scripts/build-release.sh
+
+# 2. Sign, notarize, and create DMG (requires Developer ID certificate)
+./scripts/sign-and-notarize.sh 0.1.x-beta
+
+# 3. Create GitHub release
+git tag v0.1.x-beta && git push origin v0.1.x-beta
+gh release create v0.1.x-beta dist/Retain-0.1.x-beta.dmg dist/Retain-0.1.x-beta.zip --prerelease
+```
+
+### Key Points
+
 - **Xcode 15.4+ required**: `nonisolated(unsafe)` syntax requires Swift 5.10; CI workflows must use Xcode 15.4+
-- **CI should NOT upload release assets**: Release workflows overwrite manually notarized builds; use verify-only CI for notarized apps
-- **DMG with Applications link**: Use `create-dmg --app-drop-link` or manually `ln -s /Applications` before `hdiutil create`
-- **Notarization is on the .app**: The notarization ticket is stapled to the app bundle, not the DMG; recreating the DMG preserves notarization
+- **CI should NOT upload release assets**: Release workflows overwrite manually notarized builds; use verify-only CI
+- **Notarization is on the .app bundle**: The ticket is stapled to the app, not the DMG container
+- **DMG MUST include Applications symlink**: Always create DMG with drag-to-install support:
+  ```bash
+  mkdir -p dmg_staging && cp -R Retain.app dmg_staging/ && ln -sf /Applications dmg_staging/Applications
+  hdiutil create -volname "Retain" -srcfolder dmg_staging -ov -format UDZO Retain-x.x.x.dmg
+  ```
+- **Parser version bump**: When changing `ClaudeCodeParser` display logic (titles, previews), bump `claudeCodeParserVersion` in `SyncService.swift` to force re-sync on user's next launch
