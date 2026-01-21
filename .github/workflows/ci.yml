@@ -26,5 +26,10 @@ jobs:
 
       - name: Verify Binary Exists
         run: |
-          test -f .build/release/Retain
+          echo "Listing .build directory:"
+          find .build -name "Retain" -type f 2>/dev/null || echo "No Retain binary found"
+          ls -la .build/release/ 2>/dev/null || echo ".build/release/ not found"
+          ls -la .build/arm64-apple-macosx/release/ 2>/dev/null || echo ".build/arm64-apple-macosx/release/ not found"
+          # Try both possible paths
+          test -f .build/release/Retain || test -f .build/arm64-apple-macosx/release/Retain
           echo "Release binary built successfully"
