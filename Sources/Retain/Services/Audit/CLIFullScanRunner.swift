@@ -20,7 +20,9 @@ enum CLIFullScanRunner {
         let types = parseTypes(arguments: arguments)
 
         let semaphore = DispatchSemaphore(value: 0)
-        var exitCode: Int32 = 0
+        // Use nonisolated(unsafe) to allow mutation from Task - safe here because
+        // semaphore guarantees single-threaded access after Task completes
+        nonisolated(unsafe) var exitCode: Int32 = 0
         Task {
             do {
                 try await runScan(

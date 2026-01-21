@@ -310,10 +310,11 @@ final class SemanticSearch: ObservableObject {
                 var updatedConversation = conversation
                 updatedConversation.embedding = embedding.toData()
                 updatedConversation.embeddingProvider = providerName
+                let conversationToUpdate = updatedConversation  // Create immutable copy
 
                 // Write update on background thread
                 try await Task.detached { [repository] in
-                    try repository.update(updatedConversation)
+                    try repository.update(conversationToUpdate)
                 }.value
             } catch {
                 #if DEBUG
@@ -354,10 +355,11 @@ final class SemanticSearch: ObservableObject {
         var updatedConversation = conversation
         updatedConversation.embedding = embedding.toData()
         updatedConversation.embeddingProvider = providerName
+        let conversationToUpdate = updatedConversation  // Create immutable copy
 
         // Write update on background thread
         try await Task.detached { [repository] in
-            try repository.update(updatedConversation)
+            try repository.update(conversationToUpdate)
         }.value
     }
 
@@ -403,10 +405,11 @@ final class SemanticSearch: ObservableObject {
                 var updatedConversation = conversation
                 updatedConversation.embedding = embedding.toData()
                 updatedConversation.embeddingProvider = providerName
+                let conversationToUpdate = updatedConversation  // Create immutable copy
 
                 // Write update on background thread
                 try await Task.detached { [repository] in
-                    try repository.update(updatedConversation)
+                    try repository.update(conversationToUpdate)
                 }.value
             } catch {
                 #if DEBUG
