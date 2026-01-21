@@ -1,96 +1,51 @@
-# Retain Documentation
+# Retain Developer Documentation
 
-Retain is a native macOS application that aggregates AI conversations from multiple platforms into a unified, searchable knowledge base with intelligent learning extraction.
+For user documentation, see the main [README](../README.md).
 
-## Quick Start
+## Building from Source
 
 ### Requirements
 
 - macOS 14.0 (Sonoma) or later
-- Xcode 15.0 or later
-- Swift 5.9 or later
-- Semantic search uses Apple NL (built-in, no setup required)
-- (Optional) Ollama for higher-quality embeddings
+- Xcode 15.0+ or Swift 5.9+
 
-### Installation
+### Build
 
 ```bash
-# Clone the repository
+# Clone
 git clone https://github.com/BayramAnnakov/retain.git
 cd retain
 
-# Build with Swift Package Manager
-swift build
+# Build
+swift build -c release
 
-# Or open in Xcode
-open Package.swift
+# Run
+.build/release/Retain
 ```
 
-### First Run
-
-1. Launch Retain
-2. Complete the onboarding flow
-3. Click "Sync Now" to import CLI conversations
-4. (Optional) Connect web accounts in Settings
-
-## Features
-
-### Supported Data Sources
-
-| Source | Type | Status |
-|--------|------|--------|
-| Claude Code | CLI | ✅ Auto-sync |
-| Codex CLI | CLI | ✅ Auto-sync |
-| claude.ai | Web | ✅ Manual connect |
-| chatgpt.com | Web | ✅ Manual connect |
-
-### Key Capabilities
-
-- **Unified Search**: Full-text search across all conversations with FTS5
-- **Semantic Search**: Vector similarity search using Apple NL (default) or Ollama
-- **Real-time Sync**: FSEvents-based file watching for CLI tools
-- **Learning Extraction**: Automatic detection of corrections and preferences
-- **Profile Export**: Generate CLAUDE.md files from learned preferences
-
-## Architecture
+## Project Structure
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     Retain App                              │
-├─────────────────────────────────────────────────────────────┤
-│  Data Layer                                                 │
-│  ┌─────────────┐  ┌─────────────┐  ┌───────────────────┐   │
-│  │ CLI Watcher │  │ WebView     │  │ Manual Import     │   │
-│  │ (FSEvents)  │  │ Sync Engine │  │ (JSON/Export)     │   │
-│  └──────┬──────┘  └──────┬──────┘  └─────────┬─────────┘   │
-│         └────────────────┼───────────────────┘             │
-│                          ▼                                  │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │         SQLite + FTS5 + Vector Store                │   │
-│  └─────────────────────────────────────────────────────┘   │
-│                          │                                  │
-│  ┌───────────┬───────────┼───────────┬───────────────┐     │
-│  ▼           ▼           ▼           ▼               ▼     │
-│ Search   Learning    Profile    Export          Analytics  │
-│ Engine   Extractor   Builder    Manager                    │
-└─────────────────────────────────────────────────────────────┘
+Sources/Retain/
+├── App/                    # Entry point, AppState, ContentView
+├── Components/             # Reusable UI components
+├── Data/
+│   ├── Models/             # Conversation, Message, Learning
+│   ├── Parsers/            # Claude Code, Codex parsers
+│   └── Storage/            # SQLite + GRDB repositories
+├── Features/               # Main UI features
+└── Services/               # Sync, search, web sync engines
 ```
 
-## Configuration
+## Data Storage
 
-Retain stores its configuration in:
-- `~/Library/Application Support/Retain/` - Database and settings
-- `~/Library/Preferences/` - User preferences (via @AppStorage)
+- **Database**: `~/Library/Application Support/Retain/retain.sqlite`
+- **Preferences**: `~/Library/Preferences/` (via @AppStorage)
 
-### Environment Variables (Optional)
+## Dependencies
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `OLLAMA_ENDPOINT` | Ollama API URL (if using Ollama) | `http://localhost:11434` |
-| `OLLAMA_MODEL` | Ollama embedding model | `nomic-embed-text` |
-
-> **Note**: By default, Retain uses Apple's built-in NaturalLanguage framework for embeddings. No configuration required. Ollama is optional for users who prefer higher-quality embeddings.
+- [GRDB.swift](https://github.com/groue/GRDB.swift) - SQLite with FTS5 support
 
 ## License
 
-MIT License - see [LICENSE](../LICENSE) for details.
+MIT License - see [LICENSE](../LICENSE)
