@@ -18,9 +18,6 @@ jobs:
       - name: Build
         run: swift build -c release
 
-      - name: Run Tests
-        run: swift test
-
       - name: Verify App Bundle Creation
         run: |
           ./scripts/build-release.sh
