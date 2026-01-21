@@ -1,45 +1,28 @@
 name: Release
 
+# This workflow verifies the build on release tags.
+# Actual releases are created manually with notarized binaries.
+# See scripts/sign-and-notarize.sh for the release process.
+
 on:
   push:
     tags:
       - 'v*'
 
 jobs:
-  build-and-release:
+  verify-build:
     runs-on: macos-14
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
 
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_15.4.app
 
-      - name: Install create-dmg
-        run: brew install create-dmg
-
-      - name: Extract version
-        id: version
-        env:
-          REF: ${{ github.ref }}
-        run: echo "version=${REF#refs/tags/v}" >> $GITHUB_OUTPUT
+      - name: Show Swift Version
+        run: swift --version
 
       - name: Build Release
-        run: ./scripts/build-release.sh
+        run: swift build -c release
 
-      - name: Create DMG
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-        run: ./scripts/create-dmg.sh "$VERSION"
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            dist/*.dmg
-            dist/*.zip
-          draft: true
-          generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify Binary
+        run: test -f .build/release/Retain && echo "Build verified successfully"
