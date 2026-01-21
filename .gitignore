@@ -62,3 +62,12 @@ docs/UI_AUDIT_REPORT.md
 **/OmniAI_SemanticTests/
 **/OmniAI_UIPolish/
 **/OmniAI_UIPolish_Screenshots/
+
+# Internal docs (excluded from public repo)
+docs/DEVELOPMENT.md
+docs/DATA_SOURCES.md
+docs/LEARNING.md
+docs/MILESTONES.md
+docs/SEARCH.md
+docs/WEB_SYNC.md
+docs/ARCHITECTURE.md
