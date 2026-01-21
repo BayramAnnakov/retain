@@ -26,5 +26,7 @@ jobs:
 
       - name: Verify App Bundle Creation
         run: |
-          ./scripts/build-release.sh
+          set -x
+          ./scripts/build-release.sh || (echo "Build script failed" && exit 1)
+          ls -la dist/
           test -d dist/Retain.app

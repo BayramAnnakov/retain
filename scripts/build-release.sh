@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -ex
 
 # Build script for Retain release
 # Creates an unsigned .app bundle ready for distribution
