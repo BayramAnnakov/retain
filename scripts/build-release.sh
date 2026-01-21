@@ -31,16 +31,20 @@ mkdir -p "$APP_BUNDLE/Contents/Resources"
 echo "Creating app bundle..."
 cp "$BUILD_DIR/$APP_NAME" "$APP_BUNDLE/Contents/MacOS/"
 
-# Generate app icon
-echo "Generating app icon..."
-chmod +x "$SCRIPT_DIR/generate-icon.swift"
-swift "$SCRIPT_DIR/generate-icon.swift" "$DIST_DIR"
+# Generate app icon (skip in CI - requires GUI context)
+if [ -z "$CI" ]; then
+    echo "Generating app icon..."
+    chmod +x "$SCRIPT_DIR/generate-icon.swift"
+    swift "$SCRIPT_DIR/generate-icon.swift" "$DIST_DIR"
 
-# Convert iconset to icns
-if [ -d "$DIST_DIR/AppIcon.iconset" ]; then
-    iconutil -c icns "$DIST_DIR/AppIcon.iconset" -o "$APP_BUNDLE/Contents/Resources/AppIcon.icns"
-    rm -rf "$DIST_DIR/AppIcon.iconset"
-    echo "App icon created: AppIcon.icns"
+    # Convert iconset to icns
+    if [ -d "$DIST_DIR/AppIcon.iconset" ]; then
+        iconutil -c icns "$DIST_DIR/AppIcon.iconset" -o "$APP_BUNDLE/Contents/Resources/AppIcon.icns"
+        rm -rf "$DIST_DIR/AppIcon.iconset"
+        echo "App icon created: AppIcon.icns"
+    fi
+else
+    echo "Skipping icon generation in CI (requires GUI context)"
 fi
 
 # Create Info.plist
