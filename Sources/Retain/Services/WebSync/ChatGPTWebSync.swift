@@ -499,17 +499,26 @@ final class ChatGPTWebSync {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36", forHTTPHeaderField: "User-Agent")
 
-        // Add cookies from session - only essential auth cookies to avoid 431 error
+        // Add cookies from session - only essential auth cookies to avoid 431 error.
+        // Keep to the minimum needed for auth + workspace selection.
         let cookies = sessionStorage.getCookies(for: .chatgptWeb)
         let essentialCookies = cookies.filter { cookie in
-            // ChatGPT auth cookies
-            cookie.name.contains("session-token") ||
-            cookie.name.contains("csrf-token") ||
-            cookie.name == "__cf_bm" ||  // Cloudflare bot management
-            cookie.name == "cf_clearance"  // Cloudflare clearance
+            let name = cookie.name.lowercased()
+            return name.contains("session-token")
+                || name.contains("csrf-token")
+                || name == "__cf_bm"  // Cloudflare bot management
+                || name == "cf_clearance"  // Cloudflare clearance
+                || name == "_account"  // Workspace/account selection cookie
+                || name == "oai-did"  // Device identifier (paired with header)
         }
         let cookieHeader = essentialCookies.map { "\($0.name)=\($0.value)" }.joined(separator: "; ")
         request.setValue(cookieHeader, forHTTPHeaderField: "Cookie")
+        if let accountId = cookieValue(in: cookies, name: "_account") {
+            request.setValue(accountId, forHTTPHeaderField: "chatgpt-account-id")
+        }
+        if let deviceId = cookieValue(in: cookies, name: "oai-did") {
+            request.setValue(deviceId, forHTTPHeaderField: "oai-device-id")
+        }
         if let accessToken, !accessToken.isEmpty {
             request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
         }
@@ -565,6 +574,11 @@ final class ChatGPTWebSync {
             return max(0, date.timeIntervalSinceNow)
         }
         return nil
+    }
+
+    private func cookieValue(in cookies: [HTTPCookie], name: String) -> String? {
+        let target = name.lowercased()
+        return cookies.first { $0.name.lowercased() == target }?.value
     }
 
     /// Traverse the mapping tree following only the active branch from current_node to root.
