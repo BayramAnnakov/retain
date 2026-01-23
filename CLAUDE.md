@@ -62,6 +62,7 @@ Sources/Retain/
 |--------|----------|--------|-----------|
 | Claude Code | `~/.claude/projects/**/*.jsonl` | JSONL | Yes (FSEvents) |
 | Codex CLI | `~/.codex/history.jsonl` | JSONL | Yes (FSEvents) |
+| Cursor | `~/Library/Application Support/Cursor/User/*Storage/state.vscdb` | SQLite | Yes (FSEvents) |
 | claude.ai | Web API | JSON | Manual connect |
 | chatgpt.com | Web API | JSON | Manual connect |
 
