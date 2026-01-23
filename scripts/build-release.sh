@@ -9,8 +9,8 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 BUILD_DIR="$PROJECT_DIR/.build/release"
 DIST_DIR="$PROJECT_DIR/dist"
 APP_NAME="Retain"
-VERSION="0.1.5-beta"
-BUILD_NUMBER="2"  # Increment for each release. Used by Sparkle for version comparison.
+VERSION="0.1.6-beta"
+BUILD_NUMBER="3"  # Increment for each release. Used by Sparkle for version comparison.
 
 echo "=== Building $APP_NAME $VERSION (build $BUILD_NUMBER) ==="
 

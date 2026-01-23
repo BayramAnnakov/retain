@@ -6,20 +6,20 @@
         <description>Updates for Retain</description>
         <language>en</language>
         <item>
-            <title>Version 0.1.5-beta</title>
+            <title>Version 0.1.6-beta</title>
             <description><![CDATA[
-                <h2>What's New in 0.1.5-beta</h2>
-                <p>Fix Sparkle auto-update, Settings icon, add Diagnostics tab</p>
+                <h2>What's New in 0.1.6-beta</h2>
+                <p>Fix Sparkle auto-update (proper XPC service signing)</p>
             ]]></description>
-            <pubDate>Fri, 23 Jan 2026 09:54:11 -0800</pubDate>
-            <sparkle:version>2</sparkle:version>
-            <sparkle:shortVersionString>0.1.5-beta</sparkle:shortVersionString>
+            <pubDate>Fri, 23 Jan 2026 10:04:25 -0800</pubDate>
+            <sparkle:version>3</sparkle:version>
+            <sparkle:shortVersionString>0.1.6-beta</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <enclosure
-                url="https://github.com/BayramAnnakov/retain/releases/download/v0.1.5-beta/Retain-0.1.5-beta.dmg"
-                length="6503001"
+                url="https://github.com/BayramAnnakov/retain/releases/download/v0.1.6-beta/Retain-0.1.6-beta.dmg"
+                length="6506409"
                 type="application/octet-stream"
-                sparkle:edSignature="WNl/H+Z/l42SlkFArHR2pFObGk2LZpYrC293UAsURkLijzrO966Ot5COai3D7ZQ4fAIk0XjH14a+chZMK444BA=="
+                sparkle:edSignature="U/MCbWpNBAiehDIgWAhsGrHh1jAiOG+0kc7pgQbEMTheWT/6JD+PnPNvxozaI2QmWKOx/sEq+60RnvMFrXtsDw=="
             />
         </item>
     </channel>

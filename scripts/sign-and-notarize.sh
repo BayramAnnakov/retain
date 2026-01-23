@@ -24,17 +24,50 @@ fi
 
 echo "=== Signing and Notarizing $APP_NAME $VERSION ==="
 
-# Step 1: Sign the app
+# Step 1: Sign the app bundle (proper order for Sparkle)
+# IMPORTANT: Do NOT use --deep as it corrupts XPC service signatures
+# See: https://steipete.me/posts/2025/code-signing-and-notarization-sparkle-and-tears
 echo ""
-echo "[1/4] Signing app bundle..."
-codesign --deep --force --verify --verbose \
-    --sign "$DEVELOPER_ID" \
-    --options runtime \
-    --timestamp \
-    "$DIST_DIR/$APP_NAME.app"
+echo "[1/4] Signing app bundle (Sparkle components first)..."
 
-# Verify signature
-codesign -dv --verbose=2 "$DIST_DIR/$APP_NAME.app" 2>&1 | grep -E "^(Authority|Identifier|Timestamp)"
+APP_BUNDLE="$DIST_DIR/$APP_NAME.app"
+SPARKLE_FRAMEWORK="$APP_BUNDLE/Contents/Frameworks/Sparkle.framework/Versions/B"
+
+# 1a. Sign Sparkle XPC services first (innermost components)
+echo "  Signing Installer.xpc..."
+codesign --force --sign "$DEVELOPER_ID" --options runtime --timestamp \
+    "$SPARKLE_FRAMEWORK/XPCServices/Installer.xpc"
+
+echo "  Signing Downloader.xpc (preserving entitlements)..."
+codesign --force --sign "$DEVELOPER_ID" --options runtime --timestamp \
+    --preserve-metadata=entitlements \
+    "$SPARKLE_FRAMEWORK/XPCServices/Downloader.xpc"
+
+# 1b. Sign Sparkle Updater.app
+echo "  Signing Updater.app..."
+codesign --force --sign "$DEVELOPER_ID" --options runtime --timestamp \
+    "$SPARKLE_FRAMEWORK/Updater.app"
+
+# 1c. Sign Sparkle Autoupdate binary
+echo "  Signing Autoupdate..."
+codesign --force --sign "$DEVELOPER_ID" --options runtime --timestamp \
+    "$SPARKLE_FRAMEWORK/Autoupdate"
+
+# 1d. Sign Sparkle framework
+echo "  Signing Sparkle.framework..."
+codesign --force --sign "$DEVELOPER_ID" --options runtime --timestamp \
+    "$APP_BUNDLE/Contents/Frameworks/Sparkle.framework"
+
+# 1e. Sign main app bundle (WITHOUT --deep)
+echo "  Signing main app bundle..."
+codesign --force --sign "$DEVELOPER_ID" --options runtime --timestamp \
+    "$APP_BUNDLE"
+
+# Verify signatures
+echo ""
+echo "Verifying signatures..."
+codesign --verify --deep --strict --verbose=2 "$APP_BUNDLE" 2>&1 | tail -5
+codesign -dv --verbose=2 "$APP_BUNDLE" 2>&1 | grep -E "^(Authority|Identifier|Timestamp)"
 
 # Step 2: Create zip for notarization
 echo ""
