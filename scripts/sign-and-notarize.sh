@@ -156,6 +156,16 @@ fi
 # Cleanup staging
 rm -rf "$STAGING_DIR"
 
+# Sign and notarize the DMG itself (required for Sparkle auto-updates)
+echo ""
+echo "=== Signing and notarizing DMG ==="
+DMG_PATH="$DIST_DIR/$APP_NAME-$VERSION.dmg"
+codesign --force --sign "Developer ID Application: Bayram Annakov (AM7RDT263T)" "$DMG_PATH"
+echo "DMG signed, submitting for notarization..."
+xcrun notarytool submit "$DMG_PATH" --keychain-profile "AC_PASSWORD" --wait
+xcrun stapler staple "$DMG_PATH"
+echo "DMG notarized and stapled"
+
 # Recreate zip with notarized app
 echo ""
 echo "=== Creating notarized zip ==="

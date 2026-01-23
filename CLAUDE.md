@@ -277,13 +277,13 @@ The app uses [Sparkle](https://sparkle-project.org/) for automatic updates:
 
 **Bootstrap version**: v0.1.3-beta is the first release with Sparkle. Users on older versions must manually update once; future updates will auto-notify.
 
-**CFBundleVersion must match**: Sparkle compares `sparkle:version` from appcast against `CFBundleVersion` in Info.plist. Both must use the same format (e.g., "0.1.5-beta"). If CFBundleVersion is "1" while appcast has "0.1.5-beta", Sparkle will say "up to date" instead of offering the update.
+**Version numbers for Sparkle**: Use numeric `BUILD_NUMBER` (2, 3, 4...) for `CFBundleVersion` and `sparkle:version` (comparison), while `CFBundleShortVersionString` and `sparkle:shortVersionString` use human-readable versions like "0.1.5-beta" (display only).
 
 ### Key Points
 
 - **Xcode 15.4+ required**: `nonisolated(unsafe)` syntax requires Swift 5.10; CI workflows must use Xcode 15.4+
 - **CI should NOT upload release assets**: Release workflows overwrite manually notarized builds; use verify-only CI
-- **Notarization is on the .app bundle**: The ticket is stapled to the app, not the DMG container
+- **Both .app AND .dmg must be notarized**: The .app is notarized first, then the DMG is signed, notarized, and stapled. Without DMG notarization, Sparkle auto-updates will fail with "Update Error"
 - **DMG creation**: The sign-and-notarize script uses `create-dmg` (install with `brew install create-dmg`) with fallback to `hdiutil`. Both methods include the Applications symlink for drag-to-install support.
 - **Parser version bump**: When changing `ClaudeCodeParser` display logic (titles, previews), bump `claudeCodeParserVersion` in `SyncService.swift` to force re-sync on user's next launch
 
