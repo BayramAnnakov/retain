@@ -175,14 +175,15 @@ struct SidebarView: View {
     @AppStorage("copilotEnabled") private var copilotEnabled = false
     @AppStorage("cursorEnabled") private var cursorEnabled = false
 
-    /// Providers to show in sidebar: core 4 + enabled non-core providers
+    /// Providers to show in sidebar: core 4 + enabled non-core providers + providers with data
     private var visibleProviders: [Provider] {
         Provider.allCases.filter { provider in
             guard provider.isSupported else { return false }
             // Always show core providers
             if coreProviders.contains(provider) { return true }
-            // Show non-core only if enabled
-            return isProviderEnabled(provider)
+            // Show non-core if enabled OR has conversations
+            let hasConversations = (appState.providerStats[provider] ?? 0) > 0
+            return isProviderEnabled(provider) || hasConversations
         }
     }
 

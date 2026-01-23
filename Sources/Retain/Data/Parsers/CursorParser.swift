@@ -118,28 +118,24 @@ enum CursorParser {
         for (index, tab) in tabs.enumerated() {
             guard let bubbles = tab["bubbles"] as? [[String: Any]], !bubbles.isEmpty else { continue }
 
-            let conversationId = UUID()
-            var messages: [Message] = []
-            var minTime: Date?
-            var maxTime: Date?
-
-            for bubble in bubbles {
-                guard let parsed = parseBubble(bubble, conversationId: conversationId) else { continue }
-                messages.append(parsed)
-
-                if minTime == nil || parsed.timestamp < minTime! { minTime = parsed.timestamp }
-                if maxTime == nil || parsed.timestamp > maxTime! { maxTime = parsed.timestamp }
-            }
-
-            guard !messages.isEmpty else { continue }
-
-            // Get timestamp from tab (Cursor uses "lastSendTime" not "timestamp")
+            // Get timestamp from tab FIRST (Cursor uses "lastSendTime" not "timestamp")
             var tabTime = Date()
             if let ts = tab["lastSendTime"] as? Double {
                 tabTime = Date(timeIntervalSince1970: ts / 1000)
             } else if let ts = tab["timestamp"] as? Double {
                 tabTime = Date(timeIntervalSince1970: ts / 1000)
             }
+
+            let conversationId = UUID()
+            var messages: [Message] = []
+
+            for bubble in bubbles {
+                // Pass tabTime as fallback timestamp for Chat mode bubbles
+                guard let parsed = parseBubble(bubble, conversationId: conversationId, fallbackTimestamp: tabTime) else { continue }
+                messages.append(parsed)
+            }
+
+            guard !messages.isEmpty else { continue }
 
             // Use chatTitle if available, otherwise generate from messages
             let title = (tab["chatTitle"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
@@ -153,8 +149,8 @@ enum CursorParser {
                 externalId: "chat-\(sourceFile.deletingLastPathComponent().lastPathComponent)-\(index)",
                 title: title,
                 projectPath: extractProjectPath(from: sourceFile),
-                createdAt: minTime ?? tabTime,
-                updatedAt: maxTime ?? tabTime,
+                createdAt: tabTime,
+                updatedAt: tabTime,
                 messageCount: messages.count
             )
 
@@ -277,7 +273,7 @@ enum CursorParser {
 
     // MARK: - Message Parsing Helpers
 
-    private static func parseBubble(_ bubble: [String: Any], conversationId: UUID) -> Message? {
+    private static func parseBubble(_ bubble: [String: Any], conversationId: UUID, fallbackTimestamp: Date = Date()) -> Message? {
         // Determine role
         let type = bubble["type"] as? String ?? bubble["role"] as? String ?? ""
         let role: Role
@@ -309,8 +305,8 @@ enum CursorParser {
             return nil
         }
 
-        // Parse timestamp
-        var timestamp = Date()
+        // Parse timestamp (use fallbackTimestamp if no timestamp found)
+        var timestamp = fallbackTimestamp
         if let ts = bubble["timestamp"] as? Double {
             timestamp = Date(timeIntervalSince1970: ts / 1000)
         } else if let ts = bubble["createdAt"] as? Double {
