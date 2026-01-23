@@ -226,7 +226,7 @@ struct DataSourcesSettingsView: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                     Spacer()
-                    Link("Request", destination: URL(string: "https://github.com/anthropics/retain/issues/new?template=provider-request.md")!)
+                    Link("Request", destination: URL(string: "https://github.com/BayramAnnakov/retain/issues/new?template=provider-request.md")!)
                         .font(.caption)
                 }
             }
