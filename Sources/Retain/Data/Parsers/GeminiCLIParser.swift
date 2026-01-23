@@ -114,11 +114,15 @@ enum GeminiCLIParser {
 
         guard !parsedMessages.isEmpty else { return nil }
 
-        // Use metadata timestamps if available
-        if let lastUpdated = metadata["lastUpdated"] as? Double {
+        // Use metadata timestamps if available (ISO8601 strings)
+        if let lastUpdatedStr = metadata["lastUpdated"] as? String {
+            maxTime = parseISO8601(lastUpdatedStr) ?? maxTime
+        } else if let lastUpdated = metadata["lastUpdated"] as? Double {
             maxTime = Date(timeIntervalSince1970: lastUpdated / 1000)
         }
-        if let startTime = metadata["startTime"] as? Double {
+        if let startTimeStr = metadata["startTime"] as? String {
+            minTime = parseISO8601(startTimeStr) ?? minTime
+        } else if let startTime = metadata["startTime"] as? Double {
             minTime = Date(timeIntervalSince1970: startTime / 1000)
         }
 
@@ -183,9 +187,11 @@ enum GeminiCLIParser {
             return nil
         }
 
-        // Parse timestamp
+        // Parse timestamp (Gemini CLI uses ISO8601 strings)
         var timestamp = Date()
-        if let ts = dict["ts"] as? Double {
+        if let tsStr = dict["timestamp"] as? String {
+            timestamp = parseISO8601(tsStr) ?? Date()
+        } else if let ts = dict["ts"] as? Double {
             timestamp = Date(timeIntervalSince1970: ts / 1000)
         } else if let ts = dict["timestamp"] as? Double {
             timestamp = Date(timeIntervalSince1970: ts / 1000)
@@ -227,5 +233,17 @@ enum GeminiCLIParser {
             return content
         }
         return "Gemini CLI Session"
+    }
+
+    /// Parse ISO8601 date string
+    private static func parseISO8601(_ string: String) -> Date? {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = formatter.date(from: string) {
+            return date
+        }
+        // Try without fractional seconds
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter.date(from: string)
     }
 }

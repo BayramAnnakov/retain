@@ -133,18 +133,25 @@ enum CursorParser {
 
             guard !messages.isEmpty else { continue }
 
-            // Get timestamp from tab
+            // Get timestamp from tab (Cursor uses "lastSendTime" not "timestamp")
             var tabTime = Date()
-            if let ts = tab["timestamp"] as? Double {
+            if let ts = tab["lastSendTime"] as? Double {
+                tabTime = Date(timeIntervalSince1970: ts / 1000)
+            } else if let ts = tab["timestamp"] as? Double {
                 tabTime = Date(timeIntervalSince1970: ts / 1000)
             }
+
+            // Use chatTitle if available, otherwise generate from messages
+            let title = (tab["chatTitle"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+                ? tab["chatTitle"] as! String
+                : generateTitle(from: messages)
 
             let conversation = Conversation(
                 id: conversationId,
                 provider: .cursor,
                 sourceType: .cli,
                 externalId: "chat-\(sourceFile.deletingLastPathComponent().lastPathComponent)-\(index)",
-                title: generateTitle(from: messages),
+                title: title,
                 projectPath: extractProjectPath(from: sourceFile),
                 createdAt: minTime ?? tabTime,
                 updatedAt: maxTime ?? tabTime,
@@ -235,6 +242,24 @@ enum CursorParser {
         // Sort by timestamp
         messages.sort { $0.timestamp < $1.timestamp }
 
+        // Get timestamps from composerDict or messages
+        var createdAt = messages.first?.timestamp ?? Date()
+        var updatedAt = messages.last?.timestamp ?? Date()
+
+        if let ts = composerDict["createdAt"] as? Double {
+            createdAt = Date(timeIntervalSince1970: ts / 1000)
+        }
+        // Cursor uses "lastUpdatedAt" not "updatedAt"
+        // Some records only have createdAt, use it as fallback for updatedAt
+        if let ts = composerDict["lastUpdatedAt"] as? Double {
+            updatedAt = Date(timeIntervalSince1970: ts / 1000)
+        } else if let ts = composerDict["updatedAt"] as? Double {
+            updatedAt = Date(timeIntervalSince1970: ts / 1000)
+        } else if let ts = composerDict["createdAt"] as? Double {
+            // Fallback: use createdAt if no update timestamp
+            updatedAt = Date(timeIntervalSince1970: ts / 1000)
+        }
+
         let conversation = Conversation(
             id: conversationId,
             provider: .cursor,
@@ -242,8 +267,8 @@ enum CursorParser {
             externalId: composerId,
             title: composerDict["name"] as? String ?? generateTitle(from: messages),
             projectPath: composerDict["workspacePath"] as? String ?? extractProjectPath(from: sourceFile),
-            createdAt: messages.first?.timestamp ?? Date(),
-            updatedAt: messages.last?.timestamp ?? Date(),
+            createdAt: createdAt,
+            updatedAt: updatedAt,
             messageCount: messages.count
         )
 
@@ -303,23 +328,36 @@ enum CursorParser {
 
     private static func parseComposerMessage(_ msgDict: [String: Any], conversationId: UUID) -> Message? {
         let role: Role
-        let sender = msgDict["sender"] as? String ?? msgDict["role"] as? String ?? ""
 
-        switch sender.lowercased() {
-        case "user", "human":
-            role = .user
-        case "ai", "assistant", "model":
-            role = .assistant
-        case "tool":
-            role = .tool
-        default:
-            role = .assistant
+        // Cursor uses integer type: 1 = user, 2 = assistant
+        if let typeInt = msgDict["type"] as? Int {
+            switch typeInt {
+            case 1:
+                role = .user
+            case 2:
+                role = .assistant
+            default:
+                role = .assistant
+            }
+        } else {
+            // Fallback to string-based detection
+            let sender = msgDict["sender"] as? String ?? msgDict["role"] as? String ?? ""
+            switch sender.lowercased() {
+            case "user", "human":
+                role = .user
+            case "ai", "assistant", "model":
+                role = .assistant
+            case "tool":
+                role = .tool
+            default:
+                role = .assistant
+            }
         }
 
         var content = ""
-        if let text = msgDict["text"] as? String {
+        if let text = msgDict["text"] as? String, !text.isEmpty {
             content = text
-        } else if let contentStr = msgDict["content"] as? String {
+        } else if let contentStr = msgDict["content"] as? String, !contentStr.isEmpty {
             content = contentStr
         }
 

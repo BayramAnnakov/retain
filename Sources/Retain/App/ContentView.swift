@@ -166,6 +166,37 @@ struct SidebarSectionHeader: View {
 struct SidebarView: View {
     @EnvironmentObject private var appState: AppState
 
+    // Core providers always shown in sidebar
+    private let coreProviders: Set<Provider> = [.claudeCode, .codex, .claudeWeb, .chatgptWeb]
+
+    // AppStorage bindings for provider enabled state
+    @AppStorage("opencodeEnabled") private var opencodeEnabled = false
+    @AppStorage("geminiCLIEnabled") private var geminiCLIEnabled = false
+    @AppStorage("copilotEnabled") private var copilotEnabled = false
+    @AppStorage("cursorEnabled") private var cursorEnabled = false
+
+    /// Providers to show in sidebar: core 4 + enabled non-core providers
+    private var visibleProviders: [Provider] {
+        Provider.allCases.filter { provider in
+            guard provider.isSupported else { return false }
+            // Always show core providers
+            if coreProviders.contains(provider) { return true }
+            // Show non-core only if enabled
+            return isProviderEnabled(provider)
+        }
+    }
+
+    /// Check if a non-core provider is enabled
+    private func isProviderEnabled(_ provider: Provider) -> Bool {
+        switch provider {
+        case .opencode: return opencodeEnabled
+        case .geminiCLI: return geminiCLIEnabled
+        case .copilot: return copilotEnabled
+        case .cursor: return cursorEnabled
+        default: return true  // Core providers always enabled
+        }
+    }
+
     var body: some View {
         List(selection: $appState.sidebarSelection) {
             // Smart Folders Section
@@ -182,9 +213,9 @@ struct SidebarView: View {
                 SidebarSectionHeader(title: "Smart Folders")
             }
 
-            // Providers Section (only supported providers)
+            // Providers Section (core providers + enabled non-core providers)
             Section {
-                ForEach(Provider.allCases.filter { $0.isSupported }, id: \.self) { provider in
+                ForEach(visibleProviders, id: \.self) { provider in
                     ProviderSidebarRow(
                         provider: provider,
                         count: appState.providerStats[provider] ?? 0,

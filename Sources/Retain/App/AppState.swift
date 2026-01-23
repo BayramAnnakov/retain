@@ -20,6 +20,10 @@ final class AppState: ObservableObject {
     @AppStorage("ollamaEndpoint") var ollamaEndpoint: String = "http://localhost:11434"
     @AppStorage("claudeCodeEnabled") var claudeCodeEnabled: Bool = true
     @AppStorage("codexEnabled") var codexEnabled: Bool = true
+    @AppStorage("opencodeEnabled") var opencodeEnabled: Bool = false
+    @AppStorage("geminiCLIEnabled") var geminiCLIEnabled: Bool = false
+    @AppStorage("copilotEnabled") var copilotEnabled: Bool = false
+    @AppStorage("cursorEnabled") var cursorEnabled: Bool = false
     @AppStorage("geminiWorkflowEnabled") var geminiWorkflowEnabled: Bool = false
     @AppStorage("geminiWorkflowModel") var geminiWorkflowModel: String = "gemini-3-flash-preview"
 
@@ -582,22 +586,40 @@ final class AppState: ObservableObject {
         fileWatcher.stopAll()
         guard hasCompletedOnboarding else { return }
 
+        let fileChangeHandler: (FileWatcher.FileEvent) -> Void = { [weak self] event in
+            Task { @MainActor in
+                await self?.handleFileChange(event)
+            }
+        }
+
         // Watch Claude Code
         if claudeCodeEnabled {
-            fileWatcher.watchClaudeCode { [weak self] event in
-                Task { @MainActor in
-                    await self?.handleFileChange(event)
-                }
-            }
+            fileWatcher.watchClaudeCode(onChange: fileChangeHandler)
         }
 
         // Watch Codex
         if codexEnabled {
-            fileWatcher.watchCodex { [weak self] event in
-                Task { @MainActor in
-                    await self?.handleFileChange(event)
-                }
-            }
+            fileWatcher.watchCodex(onChange: fileChangeHandler)
+        }
+
+        // Watch OpenCode
+        if opencodeEnabled {
+            fileWatcher.watchOpenCode(onChange: fileChangeHandler)
+        }
+
+        // Watch Gemini CLI
+        if geminiCLIEnabled {
+            fileWatcher.watchGeminiCLI(onChange: fileChangeHandler)
+        }
+
+        // Watch Copilot CLI
+        if copilotEnabled {
+            fileWatcher.watchCopilot(onChange: fileChangeHandler)
+        }
+
+        // Watch Cursor
+        if cursorEnabled {
+            fileWatcher.watchCursor(onChange: fileChangeHandler)
         }
     }
 
@@ -1189,6 +1211,10 @@ final class AppState: ObservableObject {
         var providers = Set<Provider>()
         if claudeCodeEnabled { providers.insert(.claudeCode) }
         if codexEnabled { providers.insert(.codex) }
+        if opencodeEnabled { providers.insert(.opencode) }
+        if geminiCLIEnabled { providers.insert(.geminiCLI) }
+        if copilotEnabled { providers.insert(.copilot) }
+        if cursorEnabled { providers.insert(.cursor) }
         return providers
     }
 

@@ -117,6 +117,34 @@ final class FileWatcher: ObservableObject {
         watch(directory: dir, extensions: ["jsonl"], onChange: onChange)
     }
 
+    /// Watch OpenCode storage directory
+    func watchOpenCode(onChange: @escaping ChangeHandler) {
+        guard let dir = OpenCodeParser.openCodeDirectory else { return }
+        watch(directory: dir, extensions: ["json"], onChange: onChange)
+    }
+
+    /// Watch Gemini CLI sessions directory
+    func watchGeminiCLI(onChange: @escaping ChangeHandler) {
+        guard let dir = GeminiCLIParser.geminiDirectory else { return }
+        watch(directory: dir, extensions: ["json"], onChange: onChange)
+    }
+
+    /// Watch Copilot CLI sessions directory
+    func watchCopilot(onChange: @escaping ChangeHandler) {
+        guard let dir = CopilotCLIParser.copilotDirectory else { return }
+        watch(directory: dir, extensions: ["jsonl"], onChange: onChange)
+    }
+
+    /// Watch Cursor storage directory
+    func watchCursor(onChange: @escaping ChangeHandler) {
+        guard let dir = CursorParser.workspaceStorageDirectory else { return }
+        watch(directory: dir, extensions: ["vscdb"], onChange: onChange)
+        // Also watch global storage for composer data
+        if let globalDir = CursorParser.globalStorageDirectory {
+            watch(directory: globalDir, extensions: ["vscdb"], onChange: onChange)
+        }
+    }
+
     /// Stop watching a specific directory
     func stop(directory: URL) {
         handlersLock.lock()

@@ -137,6 +137,10 @@ struct DataSourcesSettingsView: View {
     @EnvironmentObject private var appState: AppState
     @AppStorage("claudeCodeEnabled") private var claudeCodeEnabled = true
     @AppStorage("codexEnabled") private var codexEnabled = true
+    @AppStorage("opencodeEnabled") private var opencodeEnabled = false
+    @AppStorage("geminiCLIEnabled") private var geminiCLIEnabled = false
+    @AppStorage("copilotEnabled") private var copilotEnabled = false
+    @AppStorage("cursorEnabled") private var cursorEnabled = false
 
     /// CLI providers from the registry
     private var cliProviders: [ProviderConfiguration] {
@@ -150,8 +154,16 @@ struct DataSourcesSettingsView: View {
             return $claudeCodeEnabled
         case .codex:
             return $codexEnabled
+        case .opencode:
+            return $opencodeEnabled
+        case .geminiCLI:
+            return $geminiCLIEnabled
+        case .copilot:
+            return $copilotEnabled
+        case .cursor:
+            return $cursorEnabled
         default:
-            // Return a constant binding for unsupported providers
+            // Return a constant binding for unsupported/web providers
             return .constant(false)
         }
     }
@@ -165,7 +177,20 @@ struct DataSourcesSettingsView: View {
                         config: config,
                         count: appState.providerStats[config.provider] ?? 0,
                         isEnabled: bindingForProvider(config.provider),
-                        onChange: { appState.updateLocalSourceConfiguration() }
+                        onChange: { enabled in
+                            appState.updateLocalSourceConfiguration()
+                            // Auto-sync just this provider when enabled
+                            if enabled {
+                                Task {
+                                    await appState.syncAll(localProviders: [config.provider])
+                                }
+                            }
+                        },
+                        onSync: {
+                            Task {
+                                await appState.syncAll(localProviders: [config.provider])
+                            }
+                        }
                     )
                 }
             }
@@ -268,7 +293,8 @@ struct DynamicDataSourceRow: View {
     let config: ProviderConfiguration
     let count: Int
     @Binding var isEnabled: Bool
-    var onChange: (() -> Void)?
+    var onChange: ((Bool) -> Void)?
+    var onSync: (() -> Void)?
 
     var body: some View {
         HStack {
@@ -286,14 +312,22 @@ struct DynamicDataSourceRow: View {
 
             Spacer()
 
-            Text("\(count) conversations")
-                .font(.caption)
-                .foregroundColor(.secondary)
+            if isEnabled && count == 0 {
+                Button("Sync") {
+                    onSync?()
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            } else {
+                Text("\(count) conversations")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
 
             Toggle("", isOn: $isEnabled)
                 .toggleStyle(.switch)
-                .onChange(of: isEnabled) { _, _ in
-                    onChange?()
+                .onChange(of: isEnabled) { _, newValue in
+                    onChange?(newValue)
                 }
         }
     }
