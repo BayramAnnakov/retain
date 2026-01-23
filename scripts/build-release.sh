@@ -9,7 +9,7 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 BUILD_DIR="$PROJECT_DIR/.build/release"
 DIST_DIR="$PROJECT_DIR/dist"
 APP_NAME="Retain"
-VERSION="0.1.3-beta"
+VERSION="0.1.4-beta"
 
 echo "=== Building $APP_NAME $VERSION ==="
 
