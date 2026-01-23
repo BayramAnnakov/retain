@@ -163,7 +163,8 @@ struct LearningReviewContentView: View {
                     } else {
                         EmptyQueueView(
                             isFiltered: isFilteringByConversation,
-                            totalPending: learningQueue.pendingLearnings.count
+                            totalPending: learningQueue.pendingLearnings.count,
+                            lastScanStats: learningQueue.lastScanStats
                         )
                     }
                 } else if !visibleLearnings.isEmpty {
@@ -451,6 +452,8 @@ struct QueueHeader: View {
 struct EmptyQueueView: View {
     let isFiltered: Bool
     let totalPending: Int
+    var lastScanStats: LearningQueue.ScanStats?
+    @AppStorage("allowCloudAnalysis") private var allowCloudAnalysis = false
 
     var body: some View {
         if isFiltered && totalPending > 0 {
@@ -459,6 +462,86 @@ struct EmptyQueueView: View {
                 title: "No learnings for this conversation",
                 subtitle: "Clear the filter to review \(totalPending) other learnings"
             )
+        } else if let stats = lastScanStats, stats.isEmpty {
+            // Show scan feedback when nothing was found
+            VStack(spacing: 16) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 48))
+                    .foregroundColor(.secondary.opacity(0.6))
+
+                Text("No Learnings Found")
+                    .font(AppFont.title3)
+
+                VStack(alignment: .leading, spacing: 12) {
+                    // Scan stats
+                    GroupBox {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("Conversations scanned:")
+                                Spacer()
+                                Text("\(stats.conversationsScanned)")
+                                    .foregroundColor(.secondary)
+                            }
+                            HStack {
+                                Text("Messages analyzed:")
+                                Spacer()
+                                Text("\(stats.messagesScanned)")
+                                    .foregroundColor(.secondary)
+                            }
+                            HStack {
+                                Text("Learnings extracted:")
+                                Spacer()
+                                Text("0")
+                                    .foregroundColor(.orange)
+                            }
+                        }
+                        .font(AppFont.caption)
+                    } label: {
+                        Label("Scan Results", systemImage: "chart.bar.doc.horizontal")
+                    }
+
+                    // Explanation
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Why no learnings?")
+                            .font(AppFont.caption.bold())
+                            .foregroundColor(AppColors.secondaryText)
+
+                        Text("Pattern matching looks for specific correction phrases like:")
+                            .font(AppFont.caption)
+                            .foregroundColor(AppColors.tertiaryText)
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("• \"No, use X instead\"")
+                            Text("• \"That's wrong, it should be...\"")
+                            Text("• \"Always/never do X\"")
+                        }
+                        .font(AppFont.caption)
+                        .foregroundColor(AppColors.secondaryText)
+                        .padding(.leading, 8)
+
+                        if !allowCloudAnalysis {
+                            Divider()
+                            HStack(spacing: 8) {
+                                Image(systemName: "sparkles")
+                                    .foregroundColor(.purple)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Enable AI Analysis for deeper extraction")
+                                        .font(AppFont.caption.bold())
+                                    Text("Settings → AI Analysis → Enable Cloud Analysis")
+                                        .font(AppFont.caption2)
+                                        .foregroundColor(AppColors.tertiaryText)
+                                }
+                            }
+                        }
+                    }
+                    .padding()
+                    .background(Color(.controlBackgroundColor))
+                    .cornerRadius(8)
+                }
+                .frame(maxWidth: 340)
+            }
+            .padding()
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             VStack(spacing: 16) {
                 Image(systemName: "lightbulb")

@@ -259,6 +259,9 @@ struct AnalyticsView: View {
         .onChange(of: timeRange) { _, _ in
             loadStats()
         }
+        .onChange(of: appState.conversations) { _, _ in
+            loadStats()
+        }
     }
 
     private func loadStats() {

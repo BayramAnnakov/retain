@@ -67,15 +67,14 @@ struct AppFont {
 // MARK: - Provider Colors
 
 extension Provider {
-    /// Brand color for each provider
+    /// Brand color for each provider - derived from registry
     var brandColor: Color {
-        switch self {
-        case .claudeCode: return .orange
-        case .claudeWeb: return .orange
-        case .chatgptWeb: return Color(red: 0.16, green: 0.65, blue: 0.53) // ChatGPT emerald
-        case .codex: return .blue
-        case .gemini: return .purple
+        // Use registry configuration if available
+        if let config = configuration {
+            return config.brandColor
         }
+        // Fallback for unknown providers
+        return .gray
     }
 
     /// Short name for compact display
@@ -86,6 +85,9 @@ extension Provider {
         case .chatgptWeb: return "ChatGPT"
         case .codex: return "Codex"
         case .gemini: return "Gemini"
+        case .opencode: return "OpenCode"
+        case .geminiCLI: return "GemCLI"
+        case .cursor: return "Cursor"
         }
     }
 }

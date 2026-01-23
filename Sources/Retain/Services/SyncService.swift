@@ -374,6 +374,8 @@ actor SyncService {
     /// Perform full sync of all sources (local + optional web)
     /// The webSync closure is called to sync web sources (claude.ai, chatgpt)
     /// Returns stats on completion, throws on failure
+    ///
+    /// Uses ProviderRegistry for dynamic provider support
     func syncAllWithWeb(
         webSync: (() async throws -> SyncStats)?,
         localProviders: Set<Provider>? = nil
@@ -390,33 +392,46 @@ actor SyncService {
                 try Task.checkCancellation()
                 let allowedLocalProviders = localProviders
 
-                // Determine which providers to sync
-                let syncClaudeCode = allowedLocalProviders?.contains(.claudeCode) ?? true
-                let syncCodex = allowedLocalProviders?.contains(.codex) ?? true
+                // Get enabled CLI providers from registry
+                let enabledCLIProviders = ProviderRegistry.cliProviders.filter { config in
+                    // If localProviders is specified, use it as a filter
+                    // Otherwise, sync all supported CLI providers
+                    allowedLocalProviders?.contains(config.provider) ?? config.isSupported
+                }
 
-                // Run ALL providers in parallel (CLI + Web simultaneously)
-                async let claudeStatsTask: SyncStats? = syncClaudeCode ? self.syncClaudeCode() : nil
-                async let codexStatsTask: SyncStats? = syncCodex ? self.syncCodex() : nil
+                // Build sync tasks dynamically from registry
+                var cliSyncTasks: [Provider: Task<SyncStats?, Error>] = [:]
+
+                for config in enabledCLIProviders {
+                    let provider = config.provider
+                    cliSyncTasks[provider] = Task {
+                        try await self.syncProvider(provider)
+                    }
+                }
+
+                // Run web sync in parallel
                 async let webStatsTask: SyncStats? = webSync != nil ? try await webSync!() : nil
 
-                // Await all providers together
-                let (claudeStats, codexStats, webStats) = try await (claudeStatsTask, codexStatsTask, webStatsTask)
-
-                // Merge CLI stats
-                if let cs = claudeStats {
-                    stats.conversationsUpdated += cs.conversationsUpdated
-                    stats.messagesUpdated += cs.messagesUpdated
-                    stats.providersCompleted += 1
-                    stats.updatedConversationIds.formUnion(cs.updatedConversationIds)
-                }
-                if let xs = codexStats {
-                    stats.conversationsUpdated += xs.conversationsUpdated
-                    stats.messagesUpdated += xs.messagesUpdated
-                    stats.providersCompleted += 1
-                    stats.updatedConversationIds.formUnion(xs.updatedConversationIds)
+                // Await all CLI provider tasks
+                for (provider, task) in cliSyncTasks {
+                    do {
+                        if let providerStats = try await task.value {
+                            stats.conversationsUpdated += providerStats.conversationsUpdated
+                            stats.messagesUpdated += providerStats.messagesUpdated
+                            stats.filesSkipped += providerStats.filesSkipped
+                            stats.providersCompleted += 1
+                            stats.updatedConversationIds.formUnion(providerStats.updatedConversationIds)
+                        }
+                    } catch {
+                        #if DEBUG
+                        print("⚠️ SyncService: Failed to sync \(provider): \(error)")
+                        #endif
+                        stats.errors += 1
+                    }
                 }
 
                 // Merge web stats
+                let webStats = try await webStatsTask
                 if let ws = webStats {
                     stats.conversationsUpdated += ws.conversationsUpdated
                     stats.messagesUpdated += ws.messagesUpdated
@@ -441,6 +456,29 @@ actor SyncService {
 
         currentTask = task
         return try await task.value
+    }
+
+    /// Generic provider sync dispatcher
+    /// Routes to the appropriate sync method based on provider type
+    private func syncProvider(_ provider: Provider) async throws -> SyncStats? {
+        switch provider {
+        case .claudeCode:
+            return try await syncClaudeCode()
+        case .codex:
+            return try await syncCodex()
+        case .opencode:
+            // TODO: Implement OpenCode parser
+            return nil
+        case .geminiCLI:
+            // TODO: Implement Gemini CLI parser
+            return nil
+        case .cursor:
+            // TODO: Implement Cursor parser
+            return nil
+        case .claudeWeb, .chatgptWeb, .gemini:
+            // Web providers are handled separately
+            return nil
+        }
     }
 
     /// Cancel the current sync operation

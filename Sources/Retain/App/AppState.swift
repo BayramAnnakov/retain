@@ -1090,7 +1090,12 @@ final class AppState: ObservableObject {
 
     private func activateAfterOnboarding(triggerInitialSync: Bool) {
         // Now safe to access keychain (user has completed onboarding)
-        // Migrate cookies from login keychain to Data Protection keychain (one-time)
+
+        // FIRST: Clean up any legacy items from login keychain (one-time)
+        // This removes old keychain items that could trigger authorization prompts
+        KeychainHelper.cleanupLoginKeychain()
+
+        // Migration is disabled - cleanup is used instead
         KeychainHelper.migrateFromLoginKeychain()
 
         // Enable keychain persistence for web sessions first (persist any cookies stored during onboarding)

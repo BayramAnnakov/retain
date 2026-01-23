@@ -1,4 +1,5 @@
 import Foundation
+import LocalAuthentication
 import Security
 
 /// Simple Keychain wrapper for storing API keys securely.
@@ -30,11 +31,12 @@ enum KeychainHelper {
         }
     }
 
-    /// Save a value to Keychain
+    /// Save a value to Keychain (Data Protection keychain only)
+    /// Never falls back to login keychain to avoid authorization prompts
     static func save(key: String, value: String) throws {
         guard let data = value.data(using: .utf8) else { return }
 
-        // Delete existing item first (from both keychains)
+        // Delete existing item first
         try? delete(key: key)
 
         var query: [String: Any] = [
@@ -45,29 +47,29 @@ enum KeychainHelper {
             kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
         ]
 
-        // Try iOS-style Data Protection keychain first (preferred - no prompts)
+        // ONLY use Data Protection keychain - never fall back to login keychain
         if useDataProtection {
             query[kSecUseDataProtectionKeychain as String] = true
         }
 
-        var status = SecItemAdd(query as CFDictionary, nil)
+        let status = SecItemAdd(query as CFDictionary, nil)
 
-        // Fallback to regular keychain if Data Protection fails (-34018 = missing entitlement)
-        if status == errSecMissingEntitlement && useDataProtection {
-            print("⚠️ Data Protection keychain unavailable, falling back to login keychain")
-            query.removeValue(forKey: kSecUseDataProtectionKeychain as String)
-            status = SecItemAdd(query as CFDictionary, nil)
-        }
-
-        guard status == errSecSuccess else {
+        // Don't fall back to login keychain - it triggers authorization prompts
+        guard status == errSecSuccess || status == errSecMissingEntitlement else {
             print("⚠️ Keychain save failed with status: \(status)")
             throw KeychainError.unexpectedStatus(status)
+        }
+
+        // If we got errSecMissingEntitlement, the save silently failed but we don't
+        // fall back to avoid prompts. User will need to re-enter credentials.
+        if status == errSecMissingEntitlement {
+            print("⚠️ Data Protection keychain unavailable (missing entitlement). Credentials not saved.")
         }
     }
 
     /// Get a value from Keychain
-    /// Uses Data Protection keychain in release builds (no prompts).
-    /// Falls back to login keychain in debug builds (needed when entitlement is missing).
+    /// ONLY reads from Data Protection keychain to avoid authorization prompts.
+    /// Login keychain is only accessed during explicit migration.
     static func get(key: String) -> String? {
         var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -77,27 +79,12 @@ enum KeychainHelper {
             kSecMatchLimit as String: kSecMatchLimitOne
         ]
 
-        // Try Data Protection keychain first (no prompts in release builds)
+        // ONLY use Data Protection keychain - never fall back to login keychain
+        // This prevents unexpected Keychain authorization prompts
         if useDataProtection {
             query[kSecUseDataProtectionKeychain as String] = true
-            var result: AnyObject?
-            let status = SecItemCopyMatching(query as CFDictionary, &result)
-            if status == errSecSuccess,
-               let data = result as? Data,
-               let value = String(data: data, encoding: .utf8) {
-                return value
-            }
-            // In release builds, if Data Protection fails, don't fall back
-            // to avoid unexpected keychain prompts
-            #if !DEBUG
-            return nil
-            #endif
         }
 
-        // Fall back to login keychain only in DEBUG builds
-        // (Debug builds lack entitlement, so Data Protection fails)
-        #if DEBUG
-        query.removeValue(forKey: kSecUseDataProtectionKeychain as String)
         var result: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
 
@@ -107,12 +94,10 @@ enum KeychainHelper {
             return nil
         }
         return value
-        #else
-        return nil
-        #endif
     }
 
-    /// Delete a value from Keychain (from both Data Protection and login keychains)
+    /// Delete a value from Keychain (Data Protection keychain only)
+    /// Login keychain cleanup happens only during explicit migration
     static func delete(key: String) throws {
         var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -120,20 +105,15 @@ enum KeychainHelper {
             kSecAttrAccount as String: key
         ]
 
-        // Delete from Data Protection keychain
+        // ONLY delete from Data Protection keychain
+        // This avoids triggering Keychain authorization prompts
         if useDataProtection {
             query[kSecUseDataProtectionKeychain as String] = true
-            let dpStatus = SecItemDelete(query as CFDictionary)
-            if dpStatus != errSecSuccess && dpStatus != errSecItemNotFound && dpStatus != errSecMissingEntitlement {
-                throw KeychainError.unexpectedStatus(dpStatus)
-            }
         }
 
-        // Also delete from login keychain (fallback storage)
-        query.removeValue(forKey: kSecUseDataProtectionKeychain as String)
         let status = SecItemDelete(query as CFDictionary)
 
-        guard status == errSecSuccess || status == errSecItemNotFound else {
+        guard status == errSecSuccess || status == errSecItemNotFound || status == errSecMissingEntitlement else {
             throw KeychainError.unexpectedStatus(status)
         }
     }
@@ -210,87 +190,75 @@ enum KeychainHelper {
         }
     }
 
-    // MARK: - Login Keychain Migration
+    // MARK: - Login Keychain Cleanup
+
+    /// Key to track if cleanup has been performed (stored in UserDefaults, not keychain)
+    private static let cleanupPerformedKey = "Retain.LoginKeychainCleanupPerformed"
+
+    /// One-time cleanup of legacy items from the login keychain.
+    /// This removes old keychain items that were stored without Data Protection,
+    /// which can trigger authorization prompts when the app's code signature changes.
+    ///
+    /// This function intentionally does NOT use kSecUseDataProtectionKeychain
+    /// so it can find and delete items in the login keychain.
+    ///
+    /// Call this once on app launch. It tracks whether cleanup was already done
+    /// to avoid repeated keychain access.
+    static func cleanupLoginKeychain() {
+        // Check if cleanup was already done
+        if UserDefaults.standard.bool(forKey: cleanupPerformedKey) {
+            return
+        }
+
+        // Mark as done immediately to prevent repeated attempts even if cleanup fails
+        UserDefaults.standard.set(true, forKey: cleanupPerformedKey)
+
+        // Delete all known keys from the LOGIN keychain (without Data Protection flag)
+        // This will silently fail if items don't exist, which is fine
+        let keysToCleanup = Key.allCases.map { $0.rawValue } + [
+            // Legacy keys from development
+            "cookies_claude_web",
+            "cookies_chatgpt_web",
+        ]
+
+        let legacyServices = [service, "com.omni-ai"]
+
+        // Create LAContext that prevents user interaction
+        let context = LAContext()
+        context.interactionNotAllowed = true
+
+        for legacyService in legacyServices {
+            for key in keysToCleanup {
+                // Query WITHOUT kSecUseDataProtectionKeychain to target login keychain
+                // Use LAContext with interactionNotAllowed to prevent prompts during cleanup
+                let query: [String: Any] = [
+                    kSecClass as String: kSecClassGenericPassword,
+                    kSecAttrService as String: legacyService,
+                    kSecAttrAccount as String: key,
+                    kSecUseAuthenticationContext as String: context
+                ]
+
+                let status = SecItemDelete(query as CFDictionary)
+                if status == errSecSuccess {
+                    print("🧹 Cleaned up legacy keychain item: \(legacyService)/\(key)")
+                } else if status == errSecInteractionNotAllowed {
+                    // Item exists but we can't delete without user interaction - that's OK
+                    print("⚠️ Cannot delete legacy keychain item silently: \(legacyService)/\(key)")
+                }
+                // Ignore other errors - item might not exist
+            }
+        }
+
+        print("✅ Login keychain cleanup completed")
+    }
 
     /// Migrate cookies from login keychain to Data Protection keychain (one-time)
-    /// Handles both old per-provider format (cookies_claude_web, cookies_chatgpt_web)
-    /// and new combined format (web-session-cookies)
-    /// Also checks legacy service name "com.omni-ai" from development builds
+    /// DISABLED: No longer needed. Legacy items are cleaned up instead of migrated.
     static func migrateFromLoginKeychain() {
-        // Only migrate if Data Protection keychain is empty
-        guard webSessionCookies == nil else { return }
-
-        // Services to check (current + legacy service names from dev builds)
-        let servicesToCheck = [service, "com.omni-ai"]
-
-        // Helper to read from login keychain (without Data Protection flag)
-        func readFromLoginKeychain(key: String, svc: String) -> String? {
-            let query: [String: Any] = [
-                kSecClass as String: kSecClassGenericPassword,
-                kSecAttrService as String: svc,
-                kSecAttrAccount as String: key,
-                kSecReturnData as String: true,
-                kSecMatchLimit as String: kSecMatchLimitOne
-            ]
-            var result: AnyObject?
-            let status = SecItemCopyMatching(query as CFDictionary, &result)
-            guard status == errSecSuccess,
-                  let data = result as? Data,
-                  let value = String(data: data, encoding: .utf8) else {
-                return nil
-            }
-            return value
-        }
-
-        func deleteFromLoginKeychain(key: String, svc: String) {
-            let query: [String: Any] = [
-                kSecClass as String: kSecClassGenericPassword,
-                kSecAttrService as String: svc,
-                kSecAttrAccount as String: key
-            ]
-            SecItemDelete(query as CFDictionary)
-        }
-
-        // Try old per-provider format first (cookies_claude_web, cookies_chatgpt_web)
-        let oldKeys = ["cookies_claude_web": "claude_web", "cookies_chatgpt_web": "chatgpt_web"]
-        var combinedCookies: [String: [[String: Any]]] = [:]
-
-        for svc in servicesToCheck {
-            for (oldKey, providerKey) in oldKeys {
-                if combinedCookies[providerKey] != nil { continue } // Already found
-                if let jsonString = readFromLoginKeychain(key: oldKey, svc: svc),
-                   let data = jsonString.data(using: .utf8),
-                   let cookies = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
-                    #if DEBUG
-                    print("🔵 KeychainHelper: Found old format cookies for \(oldKey) in \(svc)")
-                    #endif
-                    combinedCookies[providerKey] = cookies
-                    deleteFromLoginKeychain(key: oldKey, svc: svc)
-                }
-            }
-        }
-
-        if !combinedCookies.isEmpty {
-            if let encoded = try? JSONSerialization.data(withJSONObject: combinedCookies),
-               let jsonString = String(data: encoded, encoding: .utf8) {
-                webSessionCookies = jsonString
-                #if DEBUG
-                print("🔵 KeychainHelper: Migrated old per-provider cookies to combined format")
-                #endif
-                return
-            }
-        }
-
-        // Try new combined format (web-session-cookies in login keychain)
-        for svc in servicesToCheck {
-            if let value = readFromLoginKeychain(key: Key.webSessionCookies.rawValue, svc: svc), !value.isEmpty {
-                webSessionCookies = value
-                deleteFromLoginKeychain(key: Key.webSessionCookies.rawValue, svc: svc)
-                #if DEBUG
-                print("🔵 KeychainHelper: Migrated cookies from login keychain (\(svc))")
-                #endif
-                return
-            }
-        }
+        // DISABLED: Migration reads from login keychain which triggers system
+        // Keychain authorization prompts. Users can simply reconnect to web
+        // services to get new cookies instead of migrating old ones.
+        //
+        // cleanupLoginKeychain() is used instead to remove old items.
     }
 }

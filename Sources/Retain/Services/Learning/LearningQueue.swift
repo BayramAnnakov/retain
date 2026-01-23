@@ -9,6 +9,17 @@ final class LearningQueue: ObservableObject {
     @Published private(set) var pendingLearnings: [Learning] = []
     @Published private(set) var approvedLearnings: [Learning] = []
     @Published private(set) var isProcessing = false
+    @Published private(set) var lastScanStats: ScanStats?
+
+    /// Statistics from the most recent scan operation
+    struct ScanStats {
+        let conversationsScanned: Int
+        let messagesScanned: Int
+        let learningsFound: Int
+        let timestamp: Date
+
+        var isEmpty: Bool { learningsFound == 0 }
+    }
 
     // MARK: - Dependencies
 
@@ -25,6 +36,11 @@ final class LearningQueue: ObservableObject {
     private let deterministicDetectorVersion = "deterministic-v2"
     private let geminiSource = "gemini"
     private let geminiDetectorVersion = "gemini-v1"
+    private let cliLLMSource = "cli-llm"
+    private let cliLLMDetectorVersion = "cli-llm-v1"
+
+    /// Whether CLI LLM is available for learning extraction
+    private var cliLLMAvailable: Bool = false
 
     // MARK: - Init
 
@@ -130,20 +146,39 @@ final class LearningQueue: ObservableObject {
         guard !isProcessing else { return }
         isProcessing = true
 
+        let learningCountBefore = pendingLearnings.count
+
         // Fetch conversations on background thread to avoid blocking MainActor
         let conversations = await Task.detached { [repository] in
             try? repository.fetchAll()
         }.value
 
+        var totalMessages = 0
         for conversation in conversations ?? [] {
+            // Count messages for stats
+            let messageCount = await Task.detached { [repository] in
+                (try? repository.fetchMessages(conversationId: conversation.id))?.count ?? 0
+            }.value
+            totalMessages += messageCount
             await scanConversation(conversation)
         }
 
         await loadPendingLearnings()
+
+        // Calculate stats
+        let learningsFound = pendingLearnings.count - learningCountBefore
+        lastScanStats = ScanStats(
+            conversationsScanned: conversations?.count ?? 0,
+            messagesScanned: totalMessages,
+            learningsFound: max(0, learningsFound),
+            timestamp: Date()
+        )
+
         isProcessing = false
     }
 
     /// Scan a single conversation for learnings
+    /// LLM-first approach: Try LLM (Gemini or CLI) first, regex as supplement
     func scanConversation(_ conversation: Conversation) async {
         // Fetch messages on background thread to avoid blocking MainActor
         let conversationId = conversation.id
@@ -157,19 +192,20 @@ final class LearningQueue: ObservableObject {
             return
         }
 
-        // Track whether Gemini successfully processed this conversation
-        var geminiProcessed = false
+        // Track whether any LLM successfully processed this conversation
+        var llmProcessed = false
 
-        // Use Gemini for semantic/hybrid mode (if enabled and configured)
+        // LLM-FIRST: Try LLM extraction first (Gemini or CLI LLM)
+        // This provides better semantic understanding than regex patterns
         if extractionMode == .semantic || extractionMode == .hybrid {
-            let isAvailable = await geminiExtractor.isAvailable
-            if geminiEnabled && isAvailable {
+            // Try Gemini first (cloud)
+            let geminiAvailable = await geminiExtractor.isAvailable
+            if geminiEnabled && geminiAvailable {
                 let geminiLearnings = await geminiExtractor.extractLearnings(from: conversation, messages: messages)
                 let filteredLearnings = geminiLearnings.filter { candidate in
                     includeImplicitLearnings || candidate.type == .correction
                 }
-                // Only mark as processed if we actually got usable results
-                geminiProcessed = !filteredLearnings.isEmpty
+                llmProcessed = !filteredLearnings.isEmpty
                 for candidate in filteredLearnings where candidate.confidence >= minimumConfidence {
                     let detection = CorrectionDetector.DetectionResult(
                         type: candidate.type,
@@ -190,15 +226,19 @@ final class LearningQueue: ObservableObject {
                     )
                 }
             }
+
+            // If Gemini didn't process, CLI LLM could be used here in the future
+            // Currently CLI LLM is used for batch analysis via AnalysisQueue, not per-conversation
+            // TODO: Add CLI LLM per-conversation extraction when batch isn't suitable
         }
 
-        // Use deterministic (regex) extraction for:
-        // - .deterministic mode (always)
-        // - .hybrid mode (always, in addition to Gemini)
-        // - .semantic mode when Gemini is unavailable (fallback)
+        // REGEX SUPPLEMENT: Use deterministic (regex) extraction as supplement/fallback
+        // - .deterministic mode: only regex
+        // - .hybrid mode: regex supplements LLM findings (catches explicit patterns LLM might miss)
+        // - .semantic mode: regex only if LLM failed/unavailable
         let shouldUseDeterministic = extractionMode == .deterministic
             || extractionMode == .hybrid
-            || (extractionMode == .semantic && !geminiProcessed)
+            || (extractionMode == .semantic && !llmProcessed)
 
         if shouldUseDeterministic {
             let detections = detector.analyzeConversation(conversation, messages: messages)

@@ -8,55 +8,45 @@ enum Provider: String, Codable, CaseIterable {
     case chatgptWeb = "chatgpt_web"
     case codex = "codex"
     case gemini = "gemini"
+    case opencode = "opencode"
+    case geminiCLI = "gemini_cli"
+    case cursor = "cursor"
+
+    /// Get the configuration for this provider from the registry
+    var configuration: ProviderConfiguration? {
+        ProviderRegistry.config(for: self)
+    }
 
     var displayName: String {
-        switch self {
-        case .claudeCode: return "Claude Code"
-        case .claudeWeb: return "Claude"
-        case .chatgptWeb: return "ChatGPT"
-        case .codex: return "Codex"
-        case .gemini: return "Gemini"
-        }
+        configuration?.displayName ?? rawValue
     }
 
     var iconName: String {
-        switch self {
-        case .claudeCode: return "terminal"
-        case .claudeWeb: return "globe"
-        case .chatgptWeb: return "bubble.left.and.bubble.right"
-        case .codex: return "command"
-        case .gemini: return "sparkles"
-        }
+        configuration?.iconName ?? "questionmark"
     }
 
     var color: Color {
-        switch self {
-        case .claudeCode: return .orange
-        case .claudeWeb: return .orange
-        case .chatgptWeb: return .green
-        case .codex: return .blue
-        case .gemini: return .purple
-        }
+        configuration?.brandColor ?? .gray
     }
 
     /// Whether this provider is currently supported
     var isSupported: Bool {
-        switch self {
-        case .claudeCode, .claudeWeb, .chatgptWeb, .codex:
-            return true
-        case .gemini:
-            return false
-        }
+        configuration?.isSupported ?? false
     }
 
     /// Whether this provider is a web source
     var isWebProvider: Bool {
-        switch self {
-        case .claudeWeb, .chatgptWeb:
-            return true
-        case .claudeCode, .codex, .gemini:
-            return false
-        }
+        configuration?.isWebProvider ?? false
+    }
+
+    /// Data path for CLI providers
+    var dataPath: URL? {
+        configuration?.dataPath
+    }
+
+    /// AppStorage key for enabled toggle
+    var enabledKey: String {
+        configuration?.enabledKey ?? "\(rawValue)Enabled"
     }
 }
 

@@ -138,31 +138,48 @@ struct DataSourcesSettingsView: View {
     @AppStorage("claudeCodeEnabled") private var claudeCodeEnabled = true
     @AppStorage("codexEnabled") private var codexEnabled = true
 
+    /// CLI providers from the registry
+    private var cliProviders: [ProviderConfiguration] {
+        ProviderRegistry.cliProviders
+    }
+
+    /// Get binding for a specific provider's enabled state
+    private func bindingForProvider(_ provider: Provider) -> Binding<Bool> {
+        switch provider {
+        case .claudeCode:
+            return $claudeCodeEnabled
+        case .codex:
+            return $codexEnabled
+        default:
+            // Return a constant binding for unsupported providers
+            return .constant(false)
+        }
+    }
+
     var body: some View {
         Form {
             Section("CLI Tools") {
-                DataSourceRow(
-                    name: "Claude Code",
-                    icon: "terminal",
-                    color: .orange,
-                    path: "~/.claude/projects/",
-                    isEnabled: $claudeCodeEnabled,
-                    count: appState.providerStats[.claudeCode] ?? 0
-                )
-                .onChange(of: claudeCodeEnabled) { _, _ in
-                    appState.updateLocalSourceConfiguration()
+                // Dynamic list from registry
+                ForEach(cliProviders, id: \.provider) { config in
+                    DynamicDataSourceRow(
+                        config: config,
+                        count: appState.providerStats[config.provider] ?? 0,
+                        isEnabled: bindingForProvider(config.provider),
+                        onChange: { appState.updateLocalSourceConfiguration() }
+                    )
                 }
+            }
 
-                DataSourceRow(
-                    name: "Codex",
-                    icon: "command",
-                    color: .blue,
-                    path: "~/.codex/sessions/",
-                    isEnabled: $codexEnabled,
-                    count: appState.providerStats[.codex] ?? 0
-                )
-                .onChange(of: codexEnabled) { _, _ in
-                    appState.updateLocalSourceConfiguration()
+            Section {
+                HStack {
+                    Image(systemName: "plus.circle")
+                        .foregroundColor(.secondary)
+                    Text("More providers coming soon")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Link("Request", destination: URL(string: "https://github.com/anthropics/retain/issues/new?template=provider-request.md")!)
+                        .font(.caption)
                 }
             }
 
@@ -241,6 +258,43 @@ struct DataSourceRow: View {
 
             Toggle("", isOn: $isEnabled)
                 .toggleStyle(.switch)
+        }
+    }
+}
+
+// MARK: - Dynamic Data Source Row (Registry-based)
+
+struct DynamicDataSourceRow: View {
+    let config: ProviderConfiguration
+    let count: Int
+    @Binding var isEnabled: Bool
+    var onChange: (() -> Void)?
+
+    var body: some View {
+        HStack {
+            Image(systemName: config.iconName)
+                .foregroundColor(config.brandColor)
+                .frame(width: 24)
+
+            VStack(alignment: .leading) {
+                Text(config.displayName)
+                    .font(.headline)
+                Text(config.sourceDescription)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+
+            Text("\(count) conversations")
+                .font(.caption)
+                .foregroundColor(.secondary)
+
+            Toggle("", isOn: $isEnabled)
+                .toggleStyle(.switch)
+                .onChange(of: isEnabled) { _, _ in
+                    onChange?()
+                }
         }
     }
 }

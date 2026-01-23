@@ -184,8 +184,12 @@ struct CLISourcesStepView: View {
     let onBack: () -> Void
     let onContinue: () -> Void
 
-    @State private var claudeCodeStatus: CLIToolStatus = .checking
-    @State private var codexStatus: CLIToolStatus = .checking
+    /// CLI providers from the registry
+    private var cliProviders: [ProviderConfiguration] {
+        ProviderRegistry.cliProviders
+    }
+
+    @State private var providerStatuses: [Provider: CLIToolStatus] = [:]
 
     var body: some View {
         VStack(spacing: 20) {
@@ -201,29 +205,20 @@ struct CLISourcesStepView: View {
             }
             .padding(.top, 30)
 
-            // CLI tool cards
+            // Dynamic CLI tool cards from registry
             VStack(spacing: 16) {
-                CLISourceCard(
-                    name: "Claude Code",
-                    icon: "terminal",
-                    iconColor: .orange,
-                    path: "~/.claude/projects/**/*.jsonl",
-                    status: claudeCodeStatus,
-                    isEnabled: $claudeCodeEnabled,
-                    willSync: "conversation history, tool usage",
-                    willNotAccess: "API keys, system files"
-                )
-
-                CLISourceCard(
-                    name: "Codex CLI",
-                    icon: "terminal.fill",
-                    iconColor: .green,
-                    path: "~/.codex/history.jsonl",
-                    status: codexStatus,
-                    isEnabled: $codexEnabled,
-                    willSync: "conversation history",
-                    willNotAccess: "API keys, system files"
-                )
+                ForEach(cliProviders, id: \.provider) { config in
+                    CLISourceCard(
+                        name: config.displayName,
+                        icon: config.iconName,
+                        iconColor: config.brandColor,
+                        path: config.sourceDescription,
+                        status: providerStatuses[config.provider] ?? .checking,
+                        isEnabled: bindingForProvider(config.provider),
+                        willSync: "conversation history",
+                        willNotAccess: "API keys, system files"
+                    )
+                }
             }
             .padding(.horizontal, 30)
 
@@ -257,16 +252,35 @@ struct CLISourcesStepView: View {
         }
     }
 
-    private func detectCLITools() async {
-        claudeCodeStatus = CLIToolDetector.claudeCodeStatus()
-        codexStatus = CLIToolDetector.codexStatus()
-
-        // Auto-disable if not found
-        if case .notFound = claudeCodeStatus {
-            claudeCodeEnabled = false
+    /// Get binding for a specific provider's enabled state
+    private func bindingForProvider(_ provider: Provider) -> Binding<Bool> {
+        switch provider {
+        case .claudeCode:
+            return $claudeCodeEnabled
+        case .codex:
+            return $codexEnabled
+        default:
+            return .constant(false)
         }
-        if case .notFound = codexStatus {
-            codexEnabled = false
+    }
+
+    private func detectCLITools() async {
+        // Detect all CLI providers from registry
+        for config in cliProviders {
+            let status = CLIToolDetector.status(for: config.provider)
+            providerStatuses[config.provider] = status
+
+            // Auto-disable if not found
+            if case .notFound = status {
+                switch config.provider {
+                case .claudeCode:
+                    claudeCodeEnabled = false
+                case .codex:
+                    codexEnabled = false
+                default:
+                    break
+                }
+            }
         }
     }
 }
@@ -690,6 +704,24 @@ struct ReadyStepView: View {
         appState.webSyncEngine.chatgptConnectionStatus.isConnected
     }
 
+    /// Check if a CLI provider is enabled
+    private func isProviderEnabled(_ provider: Provider) -> Bool {
+        switch provider {
+        case .claudeCode: return claudeCodeEnabled
+        case .codex: return codexEnabled
+        default: return false
+        }
+    }
+
+    /// Check if a web provider is connected
+    private func isWebProviderConnected(_ provider: Provider) -> Bool {
+        switch provider {
+        case .claudeWeb: return claudeConnected
+        case .chatgptWeb: return chatgptConnected
+        default: return false
+        }
+    }
+
     var body: some View {
         VStack(spacing: 16) {
             // Header
@@ -708,29 +740,24 @@ struct ReadyStepView: View {
                     .foregroundColor(.secondary)
             }
 
-            // Summary
+            // Summary - Dynamic from registry
             VStack(alignment: .leading, spacing: 8) {
-                SourceSummaryRow(
-                    name: "Claude Code",
-                    isEnabled: claudeCodeEnabled,
-                    detail: claudeCodeEnabled ? "CLI conversations" : nil
-                )
-                // Fix 5: Add Codex row
-                SourceSummaryRow(
-                    name: "Codex CLI",
-                    isEnabled: codexEnabled,
-                    detail: codexEnabled ? "CLI conversations" : nil
-                )
-                SourceSummaryRow(
-                    name: "Claude.ai",
-                    isEnabled: claudeConnected,
-                    detail: claudeConnected ? "Web conversations" : nil
-                )
-                SourceSummaryRow(
-                    name: "ChatGPT",
-                    isEnabled: chatgptConnected,
-                    detail: chatgptConnected ? "Web conversations" : nil
-                )
+                // CLI providers
+                ForEach(ProviderRegistry.cliProviders, id: \.provider) { config in
+                    SourceSummaryRow(
+                        name: config.displayName,
+                        isEnabled: isProviderEnabled(config.provider),
+                        detail: isProviderEnabled(config.provider) ? "CLI conversations" : nil
+                    )
+                }
+                // Web providers
+                ForEach(ProviderRegistry.webProviders, id: \.provider) { config in
+                    SourceSummaryRow(
+                        name: config.displayName,
+                        isEnabled: isWebProviderConnected(config.provider),
+                        detail: isWebProviderConnected(config.provider) ? "Web conversations" : nil
+                    )
+                }
             }
             .padding(16)
             .background(Color(NSColor.controlBackgroundColor))
@@ -853,6 +880,24 @@ struct SourceSummaryRow: View {
 // MARK: - CLI Tool Detector
 
 struct CLIToolDetector {
+    /// Dynamic status detection using provider registry
+    static func status(for provider: Provider) -> CLIToolStatus {
+        switch provider {
+        case .claudeCode:
+            return claudeCodeStatus()
+        case .codex:
+            return codexStatus()
+        case .opencode:
+            return openCodeStatus()
+        case .geminiCLI:
+            return geminiCLIStatus()
+        case .cursor:
+            return cursorStatus()
+        case .claudeWeb, .chatgptWeb, .gemini:
+            return .notFound  // Web providers don't have CLI status
+        }
+    }
+
     static func claudeCodeStatus() -> CLIToolStatus {
         let path = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".claude/projects")
@@ -892,6 +937,48 @@ struct CLIToolDetector {
             // File exists but couldn't read - show as found
             return .found(count: 1, size: "Found")
         }
+    }
+
+    /// OpenCode status detection
+    static func openCodeStatus() -> CLIToolStatus {
+        let path = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".local/share/opencode/storage")
+
+        guard FileManager.default.fileExists(atPath: path.path) else {
+            return .notFound
+        }
+
+        do {
+            let contents = try FileManager.default.contentsOfDirectory(atPath: path.path)
+            let sessionCount = contents.filter { !$0.hasPrefix(".") }.count
+            return .found(count: sessionCount, size: nil)
+        } catch {
+            return .notFound
+        }
+    }
+
+    /// Gemini CLI status detection
+    static func geminiCLIStatus() -> CLIToolStatus {
+        let path = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".gemini/tmp")
+
+        guard FileManager.default.fileExists(atPath: path.path) else {
+            return .notFound
+        }
+
+        return .found(count: 1, size: "Found")
+    }
+
+    /// Cursor status detection
+    static func cursorStatus() -> CLIToolStatus {
+        let path = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/Cursor")
+
+        guard FileManager.default.fileExists(atPath: path.path) else {
+            return .notFound
+        }
+
+        return .found(count: 1, size: "Found")
     }
 }
 

@@ -150,13 +150,58 @@ let progressUpdateInterval = max(20, totalFiles / 20)
 if index % progressUpdateInterval == 0 { ... }
 ```
 
+## Provider Registry Architecture
+
+The Provider Registry (`Data/Models/ProviderRegistry.swift`) centralizes provider configuration:
+
+```swift
+// Adding a new provider:
+struct OpenCodeProviderConfig: ProviderConfiguration {
+    let provider = Provider.opencode
+    let displayName = "OpenCode"
+    let iconName = "chevron.left.slash.chevron.right"
+    let brandColor = Color.cyan
+    let isSupported = true
+    let isWebProvider = false
+    let enabledKey = "opencodeEnabled"
+    let sourceDescription = "~/.local/share/opencode/storage/"
+
+    var dataPath: URL? {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".local/share/opencode/storage")
+    }
+}
+
+// Register in ProviderRegistry.all
+static let all: [ProviderConfiguration] = [
+    ...,
+    OpenCodeProviderConfig(),
+]
+```
+
+### Provider Data Locations (Reference)
+
+From [agent-sessions](https://github.com/jazzyalex/agent-sessions):
+
+| Provider | Location | Format |
+|----------|----------|--------|
+| Claude Code | `~/.claude/projects/**/*.jsonl` | JSONL |
+| Codex CLI | `~/.codex/sessions/` | JSONL |
+| OpenCode | `~/.local/share/opencode/storage/` | JSON |
+| Gemini CLI | `~/.gemini/tmp/` | JSON |
+| GitHub Copilot CLI | `~/.copilot/session-state/` | JSON |
+| Factory/Droid | `~/.factory/sessions/` | JSON |
+
 ## Common Tasks
 
 ### Add New Provider
 1. Add case to `Provider` enum in `Data/Models/Provider.swift`
-2. Create parser in `Data/Parsers/`
-3. Add sync method in `SyncService`
-4. Add file watcher in `FileWatcher` (if applicable)
+2. Create config struct implementing `ProviderConfiguration` in `Data/Models/ProviderRegistry.swift`
+3. Register in `ProviderRegistry.all`
+4. Create parser in `Data/Parsers/` (if CLI provider)
+5. Add sync method in `SyncService`
+6. Add file watcher in `FileWatcher` (if applicable)
+7. Add @AppStorage binding in `DataSourcesSettingsView` if needed
 
 ### Database Migration
 ```swift
@@ -183,6 +228,8 @@ migrator.registerMigration("v2_feature") { db in
 - Dock icon set programmatically via `NSApplication.shared.applicationIconImage`
 - Web sessions stored in Keychain, expire after ~30 days
 - Learning extraction uses regex patterns in `CorrectionDetector`
+- **Message preservation**: Messages are intentionally NOT deleted when source files are removed (preserves learnings via FK)
+- **Browser support**: Any Chromium-based browser works (Chrome, Brave, Vivaldi, Arc) for cookie reading
 
 ## Release & Distribution
 
