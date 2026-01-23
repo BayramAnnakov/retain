@@ -279,6 +279,15 @@ The app uses [Sparkle](https://sparkle-project.org/) for automatic updates:
 
 **Version numbers for Sparkle**: Use numeric `BUILD_NUMBER` (2, 3, 4...) for `CFBundleVersion` and `sparkle:version` (comparison), while `CFBundleShortVersionString` and `sparkle:shortVersionString` use human-readable versions like "0.1.5-beta" (display only).
 
+**CRITICAL - Sparkle code signing order**: Never use `codesign --deep` for Sparkle apps - it corrupts XPC service signatures and strips entitlements. Sign components individually in this order:
+1. XPC services first: `Installer.xpc`, then `Downloader.xpc` (with `--preserve-metadata=entitlements`)
+2. `Updater.app`
+3. `Autoupdate` binary
+4. `Sparkle.framework`
+5. Main app bundle last (WITHOUT `--deep`)
+
+See: https://steipete.me/posts/2025/code-signing-and-notarization-sparkle-and-tears
+
 ### Key Points
 
 - **Xcode 15.4+ required**: `nonisolated(unsafe)` syntax requires Swift 5.10; CI workflows must use Xcode 15.4+
