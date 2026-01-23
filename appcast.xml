@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <channel>
+        <title>Retain Updates</title>
+        <link>https://github.com/BayramAnnakov/retain</link>
+        <description>Updates for Retain</description>
+        <language>en</language>
+        <item>
+            <title>Version 0.1.2-beta</title>
+            <description><![CDATA[
+                <h2>What's New in 0.1.2-beta</h2>
+                <p>Auto-update support with Sparkle framework</p>
+            ]]></description>
+            <pubDate>Fri, 23 Jan 2026 03:39:46 -0800</pubDate>
+            <sparkle:version>0.1.2-beta</sparkle:version>
+            <sparkle:shortVersionString>0.1.2-beta</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <enclosure
+                url="https://github.com/BayramAnnakov/retain/releases/download/v0.1.2-beta/Retain-0.1.2-beta.dmg"
+                length="5434803"
+                type="application/octet-stream"
+                sparkle:edSignature="5434803"
+            />
+        </item>
+    </channel>
+</rss>
