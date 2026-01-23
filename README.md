@@ -4,7 +4,7 @@
 [![macOS](https://img.shields.io/badge/macOS-14.0%2B-blue)](../../releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-> A unified knowledge base for your AI conversations. Search, learn, and reflect across Claude Code, claude.ai, ChatGPT, and more.
+> A unified knowledge base for your AI conversations. Search, learn, and reflect across Claude Code, Cursor, Codex, claude.ai, ChatGPT, and more.
 
 <p align="center">
   <img src="docs/screenshots/conversations.png" width="800" alt="Conversation Browser">
@@ -24,19 +24,21 @@ From the creator of [claude-reflect](https://github.com/BayramAnnakov/claude-ref
 
 ### Key Features
 
-- **Multi-source sync**: Auto-sync from Claude Code and Codex CLI (file watching), manual sync from claude.ai and ChatGPT (cookie-based)
+- **Multi-source sync**: Auto-sync from CLI tools (Claude Code, Codex, Cursor, Gemini CLI, OpenCode, GitHub Copilot CLI), manual sync from claude.ai and ChatGPT (cookie-based)
 - **Instant search**: Full-text search across 10k+ conversations with FTS5
 - **Learning extraction**: Automatic detection of corrections ("no, use X instead") and preferences
 - **CLAUDE.md export**: Export approved learnings so Claude remembers your preferences
+- **Auto-updates**: Automatic update notifications via Sparkle framework
 - **Local-first**: All data stored locally. Optional cloud features (web sync, AI analysis) connect to external services when enabled.
 
 ## Beta Status
 
 **Stable Features:**
-- ✅ Conversation sync (Claude Code, Codex CLI, claude.ai, ChatGPT)
+- ✅ Conversation sync (Claude Code, Codex CLI, Cursor, Gemini CLI, OpenCode, GitHub Copilot CLI, claude.ai, ChatGPT)
 - ✅ Full-text search across all conversations
 - ✅ Conversation browser and detail view
 - ✅ Menu bar integration
+- ✅ Auto-updates via Sparkle
 
 **Work in Progress:**
 - 🚧 **Learnings extraction** - functional but under active development
@@ -59,10 +61,15 @@ DMG (recommended):
 1. Open the DMG.
 2. Drag Retain to Applications.
 3. Launch Retain from Applications.
+4. Future updates will be automatic via Sparkle.
 
 Zip (advanced):
 1. Unzip and move Retain.app to Applications.
 2. Launch Retain from Applications.
+
+### Updates
+
+Retain checks for updates automatically and notifies you when a new version is available. You can also check manually via the app menu.
 
 ## Supported Sources
 
@@ -70,6 +77,10 @@ Zip (advanced):
 |--------|------|-------------|--------|
 | Claude Code | CLI | Auto (file watching) | ✅ Stable |
 | Codex CLI | CLI | Auto (file watching) | ✅ Stable |
+| Cursor | IDE | Auto (file watching) | ✅ Stable |
+| Gemini CLI | CLI | Auto (file watching) | ✅ Stable |
+| OpenCode | CLI | Auto (file watching) | ✅ Stable |
+| GitHub Copilot CLI | CLI | Auto (file watching) | ✅ Stable |
 | claude.ai | Web | Cookie import from Safari/Chrome/Firefox | ✅ Works, sessions expire |
 | chatgpt.com | Web | Cookie import from Safari/Chrome/Firefox | ✅ Works, sessions expire |
 
@@ -150,7 +161,7 @@ The learning extraction logic is similar, but Retain adds multi-source aggregati
 This is an early beta. The best way to contribute right now:
 
 1. **Try it** and report bugs via [Issues](https://github.com/BayramAnnakov/retain/issues)
-2. **Share feedback** on what sources you'd want next (Cursor? Aider? API logs?)
+2. **Share feedback** on what sources you'd want next (Aider? Windsurf? API logs?)
 3. **Star the repo** if you find it useful
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for dev setup and PR guidelines.
