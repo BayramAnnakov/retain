@@ -88,6 +88,7 @@ extension Provider {
         case .opencode: return "OpenCode"
         case .geminiCLI: return "GemCLI"
         case .cursor: return "Cursor"
+        case .copilot: return "Copilot"
         }
     }
 }

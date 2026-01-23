@@ -467,14 +467,13 @@ actor SyncService {
         case .codex:
             return try await syncCodex()
         case .opencode:
-            // TODO: Implement OpenCode parser
-            return nil
+            return try await syncOpenCode()
         case .geminiCLI:
-            // TODO: Implement Gemini CLI parser
-            return nil
+            return try await syncGeminiCLI()
+        case .copilot:
+            return try await syncCopilot()
         case .cursor:
-            // TODO: Implement Cursor parser
-            return nil
+            return try await syncCursor()
         case .claudeWeb, .chatgptWeb, .gemini:
             // Web providers are handled separately
             return nil
@@ -956,5 +955,195 @@ actor SyncService {
         await MainActor.run { [weak state] in
             state?.updateProviderProgress(provider, progress: progress)
         }
+    }
+
+    // MARK: - OpenCode Sync
+
+    private func syncOpenCode() async throws -> SyncStats {
+        var stats = SyncStats()
+        let provider = Provider.opencode
+
+        // Phase 1: Discovery
+        await updateProviderProgress(provider, .discovering(weight: 0.2))
+
+        let files = OpenCodeParser.discoverSessionFiles()
+        let totalFiles = files.count
+
+        guard totalFiles > 0 else {
+            await updateProviderProgress(provider, ProviderSyncProgress(phase: .completed, progress: 1.0, weight: 0.2))
+            return stats
+        }
+
+        // Phase 2: Parse and save each file
+        let progressUpdateInterval = max(5, totalFiles / 20)
+
+        for (index, fileURL) in files.enumerated() {
+            try Task.checkCancellation()
+
+            if index % progressUpdateInterval == 0 || index == totalFiles - 1 {
+                let progress = Double(index + 1) / Double(totalFiles)
+                await updateProviderProgress(provider, ProviderSyncProgress(
+                    phase: .parsing(current: index + 1, total: totalFiles),
+                    progress: progress * 0.9,
+                    weight: 0.2,
+                    itemsProcessed: index + 1,
+                    totalItems: totalFiles
+                ))
+            }
+
+            if let (conversation, messages) = OpenCodeParser.parseSession(at: fileURL) {
+                if let result = await saveToDatabase(conversation, messages: messages), result.didChange {
+                    stats.conversationsUpdated += 1
+                    stats.messagesUpdated += messages.count
+                    stats.updatedConversationIds.insert(result.id)
+                }
+            }
+        }
+
+        await updateProviderProgress(provider, ProviderSyncProgress(
+            phase: .completed, progress: 1.0, weight: 0.2,
+            itemsProcessed: totalFiles, totalItems: totalFiles
+        ))
+
+        return stats
+    }
+
+    // MARK: - Gemini CLI Sync
+
+    private func syncGeminiCLI() async throws -> SyncStats {
+        var stats = SyncStats()
+        let provider = Provider.geminiCLI
+
+        // Phase 1: Discovery
+        await updateProviderProgress(provider, .discovering(weight: 0.2))
+
+        let files = GeminiCLIParser.discoverSessionFiles()
+        let totalFiles = files.count
+
+        guard totalFiles > 0 else {
+            await updateProviderProgress(provider, ProviderSyncProgress(phase: .completed, progress: 1.0, weight: 0.2))
+            return stats
+        }
+
+        // Phase 2: Parse and save each file
+        let progressUpdateInterval = max(5, totalFiles / 20)
+
+        for (index, fileURL) in files.enumerated() {
+            try Task.checkCancellation()
+
+            if index % progressUpdateInterval == 0 || index == totalFiles - 1 {
+                let progress = Double(index + 1) / Double(totalFiles)
+                await updateProviderProgress(provider, ProviderSyncProgress(
+                    phase: .parsing(current: index + 1, total: totalFiles),
+                    progress: progress * 0.9,
+                    weight: 0.2,
+                    itemsProcessed: index + 1,
+                    totalItems: totalFiles
+                ))
+            }
+
+            if let (conversation, messages) = GeminiCLIParser.parseSession(at: fileURL) {
+                if let result = await saveToDatabase(conversation, messages: messages), result.didChange {
+                    stats.conversationsUpdated += 1
+                    stats.messagesUpdated += messages.count
+                    stats.updatedConversationIds.insert(result.id)
+                }
+            }
+        }
+
+        await updateProviderProgress(provider, ProviderSyncProgress(
+            phase: .completed, progress: 1.0, weight: 0.2,
+            itemsProcessed: totalFiles, totalItems: totalFiles
+        ))
+
+        return stats
+    }
+
+    // MARK: - Copilot CLI Sync
+
+    private func syncCopilot() async throws -> SyncStats {
+        var stats = SyncStats()
+        let provider = Provider.copilot
+
+        // Phase 1: Discovery
+        await updateProviderProgress(provider, .discovering(weight: 0.2))
+
+        let files = CopilotCLIParser.discoverSessionFiles()
+        let totalFiles = files.count
+
+        guard totalFiles > 0 else {
+            await updateProviderProgress(provider, ProviderSyncProgress(phase: .completed, progress: 1.0, weight: 0.2))
+            return stats
+        }
+
+        // Phase 2: Parse and save each file
+        let progressUpdateInterval = max(5, totalFiles / 20)
+
+        for (index, fileURL) in files.enumerated() {
+            try Task.checkCancellation()
+
+            if index % progressUpdateInterval == 0 || index == totalFiles - 1 {
+                let progress = Double(index + 1) / Double(totalFiles)
+                await updateProviderProgress(provider, ProviderSyncProgress(
+                    phase: .parsing(current: index + 1, total: totalFiles),
+                    progress: progress * 0.9,
+                    weight: 0.2,
+                    itemsProcessed: index + 1,
+                    totalItems: totalFiles
+                ))
+            }
+
+            if let (conversation, messages) = CopilotCLIParser.parseSession(at: fileURL) {
+                if let result = await saveToDatabase(conversation, messages: messages), result.didChange {
+                    stats.conversationsUpdated += 1
+                    stats.messagesUpdated += messages.count
+                    stats.updatedConversationIds.insert(result.id)
+                }
+            }
+        }
+
+        await updateProviderProgress(provider, ProviderSyncProgress(
+            phase: .completed, progress: 1.0, weight: 0.2,
+            itemsProcessed: totalFiles, totalItems: totalFiles
+        ))
+
+        return stats
+    }
+
+    // MARK: - Cursor Sync
+
+    private func syncCursor() async throws -> SyncStats {
+        var stats = SyncStats()
+        let provider = Provider.cursor
+
+        // Phase 1: Discovery
+        await updateProviderProgress(provider, .discovering(weight: 0.2))
+
+        // Cursor parses all databases at once
+        let results = CursorParser.parseAllSessions()
+        let totalResults = results.count
+
+        guard totalResults > 0 else {
+            await updateProviderProgress(provider, ProviderSyncProgress(phase: .completed, progress: 1.0, weight: 0.2))
+            return stats
+        }
+
+        // Phase 2: Save results
+        await updateProviderProgress(provider, ProviderSyncProgress(
+            phase: .saving, progress: 0.5, weight: 0.2,
+            itemsProcessed: 0, totalItems: totalResults
+        ))
+
+        let savedStats = await saveBatchToDatabase(results)
+        stats.conversationsUpdated += savedStats.conversationsUpdated
+        stats.messagesUpdated += savedStats.messagesUpdated
+        stats.updatedConversationIds.formUnion(savedStats.updatedConversationIds)
+
+        await updateProviderProgress(provider, ProviderSyncProgress(
+            phase: .completed, progress: 1.0, weight: 0.2,
+            itemsProcessed: totalResults, totalItems: totalResults
+        ))
+
+        return stats
     }
 }

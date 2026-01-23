@@ -10,6 +10,7 @@ enum ProviderRegistry {
         CodexProviderConfig(),
         OpenCodeProviderConfig(),
         GeminiCLIProviderConfig(),
+        CopilotProviderConfig(),
         CursorProviderConfig(),
         ClaudeWebProviderConfig(),
         ChatGPTWebProviderConfig(),
@@ -158,17 +159,16 @@ struct OpenCodeProviderConfig: ProviderConfiguration {
     let displayName = "OpenCode"
     let iconName = "chevron.left.slash.chevron.right"
     let brandColor = Color.cyan
-    let isSupported = false  // Parser not yet implemented
+    let isSupported = true
     let isWebProvider = false
     let enabledKey = "opencodeEnabled"
     let sourceDescription = "~/.local/share/opencode/storage/"
 
     var dataPath: URL? {
-        FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".local/share/opencode/storage")
+        OpenCodeParser.openCodeDirectory
     }
 
-    var filePattern: String? { "*.json" }
+    var filePattern: String? { "ses_*.json" }
 
     func detectInstallation() -> ProviderInstallStatus {
         guard let path = dataPath, FileManager.default.fileExists(atPath: path.path) else {
@@ -185,17 +185,42 @@ struct GeminiCLIProviderConfig: ProviderConfiguration {
     let displayName = "Gemini CLI"
     let iconName = "sparkle"
     let brandColor = Color.indigo
-    let isSupported = false  // Parser not yet implemented
+    let isSupported = true
     let isWebProvider = false
     let enabledKey = "geminiCLIEnabled"
     let sourceDescription = "~/.gemini/tmp/"
 
     var dataPath: URL? {
-        FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".gemini/tmp")
+        GeminiCLIParser.geminiDirectory
     }
 
-    var filePattern: String? { "*.json" }
+    var filePattern: String? { "session-*.json" }
+
+    func detectInstallation() -> ProviderInstallStatus {
+        guard let path = dataPath, FileManager.default.fileExists(atPath: path.path) else {
+            return .notInstalled
+        }
+        return .installed(version: nil)
+    }
+}
+
+// MARK: - GitHub Copilot CLI Configuration
+
+struct CopilotProviderConfig: ProviderConfiguration {
+    let provider = Provider.copilot
+    let displayName = "Copilot CLI"
+    let iconName = "airplane"
+    let brandColor = Color.gray
+    let isSupported = true
+    let isWebProvider = false
+    let enabledKey = "copilotEnabled"
+    let sourceDescription = "~/.copilot/session-state/"
+
+    var dataPath: URL? {
+        CopilotCLIParser.copilotDirectory
+    }
+
+    var filePattern: String? { "*.jsonl" }
 
     func detectInstallation() -> ProviderInstallStatus {
         guard let path = dataPath, FileManager.default.fileExists(atPath: path.path) else {
@@ -212,23 +237,24 @@ struct CursorProviderConfig: ProviderConfiguration {
     let displayName = "Cursor"
     let iconName = "cursorarrow.rays"
     let brandColor = Color.pink
-    let isSupported = false  // Parser not yet implemented, storage location unknown
+    let isSupported = true
     let isWebProvider = false
     let enabledKey = "cursorEnabled"
-    let sourceDescription = "Cursor AI IDE"
+    let sourceDescription = "~/Library/Application Support/Cursor/"
 
     var dataPath: URL? {
-        // Cursor storage location needs investigation
-        // Possibly in ~/Library/Application Support/Cursor/
-        FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Application Support/Cursor")
+        CursorParser.workspaceStorageDirectory
     }
 
+    var filePattern: String? { "state.vscdb" }
+
     func detectInstallation() -> ProviderInstallStatus {
-        guard let path = dataPath, FileManager.default.fileExists(atPath: path.path) else {
-            return .notInstalled
+        // Check both workspace and global storage
+        if CursorParser.workspaceStorageDirectory != nil ||
+           CursorParser.globalStorageDirectory != nil {
+            return .installed(version: nil)
         }
-        return .installed(version: nil)
+        return .notInstalled
     }
 }
 

@@ -11,6 +11,7 @@ enum Provider: String, Codable, CaseIterable {
     case opencode = "opencode"
     case geminiCLI = "gemini_cli"
     case cursor = "cursor"
+    case copilot = "copilot"
 
     /// Get the configuration for this provider from the registry
     var configuration: ProviderConfiguration? {

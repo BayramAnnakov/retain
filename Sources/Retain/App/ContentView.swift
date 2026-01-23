@@ -1033,7 +1033,7 @@ struct EmptyConversationListView: View {
                 hasSynced: appState.syncedProviders.contains(.chatgptWeb),
                 providerName: "ChatGPT"
             )
-        case .claudeCode, .codex, .gemini, .opencode, .geminiCLI, .cursor:
+        case .claudeCode, .codex, .gemini, .opencode, .geminiCLI, .copilot, .cursor:
             // CLI providers - always show no data state
             UnifiedEmptyState.noData(
                 title: "No \(provider.displayName) conversations",

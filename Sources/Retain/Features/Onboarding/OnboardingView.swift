@@ -891,6 +891,8 @@ struct CLIToolDetector {
             return openCodeStatus()
         case .geminiCLI:
             return geminiCLIStatus()
+        case .copilot:
+            return copilotStatus()
         case .cursor:
             return cursorStatus()
         case .claudeWeb, .chatgptWeb, .gemini:
@@ -979,6 +981,24 @@ struct CLIToolDetector {
         }
 
         return .found(count: 1, size: "Found")
+    }
+
+    static func copilotStatus() -> CLIToolStatus {
+        let path = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".copilot/session-state")
+
+        guard FileManager.default.fileExists(atPath: path.path) else {
+            return .notFound
+        }
+
+        // Count session files
+        do {
+            let contents = try FileManager.default.contentsOfDirectory(atPath: path.path)
+            let sessionCount = contents.filter { $0.hasSuffix(".jsonl") }.count
+            return .found(count: sessionCount, size: nil)
+        } catch {
+            return .notFound
+        }
     }
 }
 
