@@ -205,12 +205,14 @@ final class WebSyncEngine: ObservableObject {
 
     // MARK: - Session Management
 
-    /// Check for existing valid sessions on startup
+    /// Check for existing valid sessions on startup (with retry for transient failures)
     private func checkExistingSessions() async {
         // Check Claude session
         if sessionStorage.hasValidSession(for: .claudeWeb) {
             do {
-                let userInfo = try await claudeSync.validateSession()
+                let userInfo = try await retrying(provider: .claudeWeb) {
+                    try await self.claudeSync.validateSession()
+                }
                 claudeConnectionStatus = .connected(email: userInfo.email)
                 markSessionVerified(for: .claudeWeb)
             } catch {
@@ -221,7 +223,9 @@ final class WebSyncEngine: ObservableObject {
         // Check ChatGPT session
         if sessionStorage.hasValidSession(for: .chatgptWeb) {
             do {
-                let userInfo = try await chatgptSync.validateSession()
+                let userInfo = try await retrying(provider: .chatgptWeb) {
+                    try await self.chatgptSync.validateSession()
+                }
                 chatgptConnectionStatus = .connected(email: userInfo.email)
                 markSessionVerified(for: .chatgptWeb)
             } catch {

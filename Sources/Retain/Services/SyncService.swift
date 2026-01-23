@@ -88,7 +88,8 @@ final class SyncState: ObservableObject {
     private func updateStatusMessage(for provider: Provider, progress: ProviderSyncProgress) {
         switch progress.phase {
         case .discovering:
-            statusMessage = "Discovering \(provider.displayName) files..."
+            let noun = provider.isWebProvider ? "conversations" : "files"
+            statusMessage = "Discovering \(provider.displayName) \(noun)..."
         case .parsing(let current, let total):
             statusMessage = "Parsing \(provider.displayName): \(current)/\(total)"
         case .saving:
