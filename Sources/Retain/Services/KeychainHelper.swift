@@ -66,8 +66,8 @@ enum KeychainHelper {
     }
 
     /// Get a value from Keychain
-    /// NOTE: Only reads from Data Protection keychain to avoid authorization prompts.
-    /// Items in the legacy login keychain are not accessible without user approval.
+    /// Uses Data Protection keychain in release builds (no prompts).
+    /// Falls back to login keychain in debug builds (needed when entitlement is missing).
     static func get(key: String) -> String? {
         var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -77,12 +77,27 @@ enum KeychainHelper {
             kSecMatchLimit as String: kSecMatchLimitOne
         ]
 
-        // Use iOS-style Data Protection keychain (no prompts)
-        // DO NOT fall back to login keychain - that triggers authorization prompts
+        // Try Data Protection keychain first (no prompts in release builds)
         if useDataProtection {
             query[kSecUseDataProtectionKeychain as String] = true
+            var result: AnyObject?
+            let status = SecItemCopyMatching(query as CFDictionary, &result)
+            if status == errSecSuccess,
+               let data = result as? Data,
+               let value = String(data: data, encoding: .utf8) {
+                return value
+            }
+            // In release builds, if Data Protection fails, don't fall back
+            // to avoid unexpected keychain prompts
+            #if !DEBUG
+            return nil
+            #endif
         }
 
+        // Fall back to login keychain only in DEBUG builds
+        // (Debug builds lack entitlement, so Data Protection fails)
+        #if DEBUG
+        query.removeValue(forKey: kSecUseDataProtectionKeychain as String)
         var result: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
 
@@ -91,8 +106,10 @@ enum KeychainHelper {
               let value = String(data: data, encoding: .utf8) else {
             return nil
         }
-
         return value
+        #else
+        return nil
+        #endif
     }
 
     /// Delete a value from Keychain (from both Data Protection and login keychains)
@@ -189,6 +206,90 @@ enum KeychainHelper {
                 try? save(key: Key.chatgptAccessToken.rawValue, value: value)
             } else {
                 try? delete(key: Key.chatgptAccessToken.rawValue)
+            }
+        }
+    }
+
+    // MARK: - Login Keychain Migration
+
+    /// Migrate cookies from login keychain to Data Protection keychain (one-time)
+    /// Handles both old per-provider format (cookies_claude_web, cookies_chatgpt_web)
+    /// and new combined format (web-session-cookies)
+    /// Also checks legacy service name "com.omni-ai" from development builds
+    static func migrateFromLoginKeychain() {
+        // Only migrate if Data Protection keychain is empty
+        guard webSessionCookies == nil else { return }
+
+        // Services to check (current + legacy service names from dev builds)
+        let servicesToCheck = [service, "com.omni-ai"]
+
+        // Helper to read from login keychain (without Data Protection flag)
+        func readFromLoginKeychain(key: String, svc: String) -> String? {
+            let query: [String: Any] = [
+                kSecClass as String: kSecClassGenericPassword,
+                kSecAttrService as String: svc,
+                kSecAttrAccount as String: key,
+                kSecReturnData as String: true,
+                kSecMatchLimit as String: kSecMatchLimitOne
+            ]
+            var result: AnyObject?
+            let status = SecItemCopyMatching(query as CFDictionary, &result)
+            guard status == errSecSuccess,
+                  let data = result as? Data,
+                  let value = String(data: data, encoding: .utf8) else {
+                return nil
+            }
+            return value
+        }
+
+        func deleteFromLoginKeychain(key: String, svc: String) {
+            let query: [String: Any] = [
+                kSecClass as String: kSecClassGenericPassword,
+                kSecAttrService as String: svc,
+                kSecAttrAccount as String: key
+            ]
+            SecItemDelete(query as CFDictionary)
+        }
+
+        // Try old per-provider format first (cookies_claude_web, cookies_chatgpt_web)
+        let oldKeys = ["cookies_claude_web": "claude_web", "cookies_chatgpt_web": "chatgpt_web"]
+        var combinedCookies: [String: [[String: Any]]] = [:]
+
+        for svc in servicesToCheck {
+            for (oldKey, providerKey) in oldKeys {
+                if combinedCookies[providerKey] != nil { continue } // Already found
+                if let jsonString = readFromLoginKeychain(key: oldKey, svc: svc),
+                   let data = jsonString.data(using: .utf8),
+                   let cookies = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+                    #if DEBUG
+                    print("🔵 KeychainHelper: Found old format cookies for \(oldKey) in \(svc)")
+                    #endif
+                    combinedCookies[providerKey] = cookies
+                    deleteFromLoginKeychain(key: oldKey, svc: svc)
+                }
+            }
+        }
+
+        if !combinedCookies.isEmpty {
+            if let encoded = try? JSONSerialization.data(withJSONObject: combinedCookies),
+               let jsonString = String(data: encoded, encoding: .utf8) {
+                webSessionCookies = jsonString
+                #if DEBUG
+                print("🔵 KeychainHelper: Migrated old per-provider cookies to combined format")
+                #endif
+                return
+            }
+        }
+
+        // Try new combined format (web-session-cookies in login keychain)
+        for svc in servicesToCheck {
+            if let value = readFromLoginKeychain(key: Key.webSessionCookies.rawValue, svc: svc), !value.isEmpty {
+                webSessionCookies = value
+                deleteFromLoginKeychain(key: Key.webSessionCookies.rawValue, svc: svc)
+                #if DEBUG
+                print("🔵 KeychainHelper: Migrated cookies from login keychain (\(svc))")
+                #endif
+                return
             }
         }
     }

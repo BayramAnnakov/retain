@@ -287,9 +287,10 @@ final class WebSyncEngine: ObservableObject {
             }
         }
 
-        // Transient failure (network, rate limit, parse): keep cookies, mark unverified.
+        // Transient failure (network, rate limit, parse): keep cookies, show connected (unverified).
+        // Don't set to disconnected - cookies are still valid, just couldn't verify email.
         clearVerificationState(for: provider)
-        setConnectionStatus(.disconnected, for: provider)
+        setConnectionStatus(.connected(email: nil), for: provider)
     }
 
     /// Handle explicit verify failures (user-initiated).
