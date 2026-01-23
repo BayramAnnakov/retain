@@ -18,6 +18,7 @@ struct SettingsView: View {
         case webAccounts = "Web Accounts"
         case learnings = "Learnings"
         case aiFeatures = "AI Features"
+        case diagnostics = "Diagnostics"
 
         var id: String { rawValue }
 
@@ -28,6 +29,7 @@ struct SettingsView: View {
             case .webAccounts: return "globe"
             case .learnings: return "lightbulb"
             case .aiFeatures: return "sparkles"
+            case .diagnostics: return "stethoscope"
             }
         }
 
@@ -38,6 +40,7 @@ struct SettingsView: View {
             case .webAccounts: return .green
             case .learnings: return .orange
             case .aiFeatures: return .purple
+            case .diagnostics: return .red
             }
         }
     }
@@ -68,6 +71,8 @@ struct SettingsView: View {
                     LearningsSettingsView()
                 case .aiFeatures:
                     AIFeaturesSettingsView()
+                case .diagnostics:
+                    DiagnosticsSettingsView()
                 }
             }
             .frame(minWidth: 480)
@@ -518,6 +523,8 @@ struct WebAccountRowView: View {
     let onDisconnect: () -> Void
     let onSync: (() -> Void)?
 
+    @Environment(\.colorScheme) private var colorScheme
+
     private var statusText: String {
         switch sessionState {
         case .notConnected:
@@ -536,11 +543,11 @@ struct WebAccountRowView: View {
     private var statusColor: Color {
         switch sessionState {
         case .connected:
-            return .green
+            return AppColors.statusTextColor(.success, colorScheme: colorScheme)
         case .sessionSaved:
-            return .orange
+            return AppColors.statusTextColor(.warning, colorScheme: colorScheme)
         case .error:
-            return .red
+            return AppColors.statusTextColor(.error, colorScheme: colorScheme)
         default:
             return .secondary
         }
@@ -750,7 +757,8 @@ struct AIFeaturesSettingsView: View {
     // Gemini API key validation state
     enum ApiKeyValidationState: Equatable {
         case idle
-        case validating
+        case typing       // User is still typing (debounce period)
+        case validating   // Actually making API call
         case valid
         case invalid(String)
         case networkError(String)
@@ -794,11 +802,14 @@ struct AIFeaturesSettingsView: View {
                                 if newValue.isEmpty {
                                     apiKeyValidationState = .idle
                                 } else {
-                                    apiKeyValidationState = .validating
+                                    apiKeyValidationState = .typing  // Show typing state during debounce
                                     validationTask = Task {
                                         // Debounce: wait 500ms before validating
                                         try? await Task.sleep(nanoseconds: 500_000_000)
                                         guard !Task.isCancelled else { return }
+                                        await MainActor.run {
+                                            apiKeyValidationState = .validating  // Now actually validating
+                                        }
                                         await validateApiKey(newValue)
                                     }
                                 }
@@ -913,7 +924,7 @@ struct AIFeaturesSettingsView: View {
 
             // MARK: - Advanced (Collapsible)
             DisclosureGroup("Advanced", isExpanded: $showAdvanced) {
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: Spacing.lg) {
                     // Ollama settings
                     GroupBox {
                         VStack(alignment: .leading, spacing: 8) {
@@ -1145,10 +1156,17 @@ struct AIFeaturesSettingsView: View {
         switch apiKeyValidationState {
         case .idle:
             EmptyView()
+        case .typing:
+            // Subtle indicator while user is still typing
+            Image(systemName: "pencil")
+                .foregroundColor(.secondary)
+                .font(.caption)
+                .help("Waiting for you to finish typing...")
         case .validating:
             ProgressView()
                 .scaleEffect(0.7)
                 .frame(width: 20, height: 20)
+                .help("Verifying API key...")
         case .valid:
             Image(systemName: "checkmark.circle.fill")
                 .foregroundColor(.green)
@@ -1293,6 +1311,265 @@ private struct InlineWarningBanner: View {
             Spacer()
         }
         .padding(.vertical, Spacing.xs)
+    }
+}
+
+// MARK: - Diagnostics Settings
+
+struct DiagnosticsSettingsView: View {
+    @EnvironmentObject private var appState: AppState
+    @State private var diagnosticInfo: [ProviderDiagnostic] = []
+    @State private var isLoading = false
+    @State private var syncLogs: [String] = []
+
+    struct ProviderDiagnostic: Identifiable {
+        let id = UUID()
+        let provider: Provider
+        let name: String
+        let isEnabled: Bool
+        let paths: [PathInfo]
+        let conversationCount: Int
+
+        struct PathInfo: Identifiable {
+            let id = UUID()
+            let path: String
+            let exists: Bool
+            let fileCount: Int
+        }
+    }
+
+    var body: some View {
+        Form {
+            Section("Provider Paths") {
+                if isLoading {
+                    ProgressView("Scanning paths...")
+                } else if diagnosticInfo.isEmpty {
+                    Button("Run Diagnostics") {
+                        runDiagnostics()
+                    }
+                } else {
+                    ForEach(diagnosticInfo) { diag in
+                        DisclosureGroup {
+                            VStack(alignment: .leading, spacing: 8) {
+                                ForEach(diag.paths) { pathInfo in
+                                    HStack(alignment: .top, spacing: 8) {
+                                        Image(systemName: pathInfo.exists ? "checkmark.circle.fill" : "xmark.circle.fill")
+                                            .foregroundColor(pathInfo.exists ? .green : .red)
+                                            .font(.caption)
+
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(pathInfo.path)
+                                                .font(.system(.caption, design: .monospaced))
+                                                .textSelection(.enabled)
+                                            if pathInfo.exists {
+                                                Text("\(pathInfo.fileCount) files found")
+                                                    .font(.caption2)
+                                                    .foregroundColor(.secondary)
+                                            } else {
+                                                Text("Path not found")
+                                                    .font(.caption2)
+                                                    .foregroundColor(.red)
+                                            }
+                                        }
+                                    }
+                                    .padding(.vertical, 2)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        } label: {
+                            HStack {
+                                Image(systemName: diag.isEnabled ? "checkmark.circle.fill" : "circle")
+                                    .foregroundColor(diag.isEnabled ? .green : .secondary)
+                                Text(diag.name)
+                                    .fontWeight(.medium)
+                                Spacer()
+                                Text("\(diag.conversationCount) conversations")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+
+                    Button("Refresh") {
+                        runDiagnostics()
+                    }
+                    .padding(.top, 8)
+                }
+            }
+
+            Section("Sync Logs") {
+                if syncLogs.isEmpty {
+                    Text("No recent sync activity")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                } else {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 4) {
+                            ForEach(syncLogs, id: \.self) { log in
+                                Text(log)
+                                    .font(.system(.caption2, design: .monospaced))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                    .frame(maxHeight: 200)
+                }
+
+                Button("Copy Logs") {
+                    let logText = syncLogs.joined(separator: "\n")
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(logText, forType: .string)
+                }
+                .disabled(syncLogs.isEmpty)
+            }
+
+            Section("Debug Actions") {
+                Button("Export Diagnostic Report") {
+                    exportDiagnosticReport()
+                }
+
+                Button("Clear Database Cache", role: .destructive) {
+                    // Placeholder for cache clearing
+                }
+                .disabled(true)
+            }
+        }
+        .formStyle(.grouped)
+        .padding()
+        .onAppear {
+            runDiagnostics()
+        }
+    }
+
+    private func runDiagnostics() {
+        isLoading = true
+        diagnosticInfo = []
+        syncLogs = []
+
+        Task {
+            var results: [ProviderDiagnostic] = []
+            let fm = FileManager.default
+            let home = fm.homeDirectoryForCurrentUser
+
+            // Claude Code
+            let claudeCodePath = home.appendingPathComponent(".claude/projects")
+            let claudeCodeExists = fm.fileExists(atPath: claudeCodePath.path)
+            let claudeCodeFiles = claudeCodeExists ? (try? fm.contentsOfDirectory(atPath: claudeCodePath.path))?.count ?? 0 : 0
+            results.append(ProviderDiagnostic(
+                provider: .claudeCode,
+                name: "Claude Code",
+                isEnabled: UserDefaults.standard.bool(forKey: "claudeCodeEnabled"),
+                paths: [ProviderDiagnostic.PathInfo(path: claudeCodePath.path, exists: claudeCodeExists, fileCount: claudeCodeFiles)],
+                conversationCount: appState.providerStats[.claudeCode] ?? 0
+            ))
+            syncLogs.append("[\(Date().formatted(date: .omitted, time: .standard))] Checked Claude Code: \(claudeCodePath.path)")
+
+            // Codex
+            let codexPath = home.appendingPathComponent(".codex")
+            let codexExists = fm.fileExists(atPath: codexPath.path)
+            let codexFiles = codexExists ? (try? fm.contentsOfDirectory(atPath: codexPath.path))?.count ?? 0 : 0
+            results.append(ProviderDiagnostic(
+                provider: .codex,
+                name: "Codex CLI",
+                isEnabled: UserDefaults.standard.bool(forKey: "codexEnabled"),
+                paths: [ProviderDiagnostic.PathInfo(path: codexPath.path, exists: codexExists, fileCount: codexFiles)],
+                conversationCount: appState.providerStats[.codex] ?? 0
+            ))
+            syncLogs.append("[\(Date().formatted(date: .omitted, time: .standard))] Checked Codex: \(codexPath.path)")
+
+            // Cursor
+            let cursorWorkspace = home.appendingPathComponent("Library/Application Support/Cursor/User/workspaceStorage")
+            let cursorGlobal = home.appendingPathComponent("Library/Application Support/Cursor/User/globalStorage")
+            let cursorWsExists = fm.fileExists(atPath: cursorWorkspace.path)
+            let cursorGsExists = fm.fileExists(atPath: cursorGlobal.path)
+
+            var cursorWsFiles = 0
+            if cursorWsExists, let dirs = try? fm.contentsOfDirectory(atPath: cursorWorkspace.path) {
+                for dir in dirs {
+                    let dbPath = cursorWorkspace.appendingPathComponent(dir).appendingPathComponent("state.vscdb")
+                    if fm.fileExists(atPath: dbPath.path) {
+                        cursorWsFiles += 1
+                    }
+                }
+            }
+            let cursorGsFiles = cursorGsExists && fm.fileExists(atPath: cursorGlobal.appendingPathComponent("state.vscdb").path) ? 1 : 0
+
+            results.append(ProviderDiagnostic(
+                provider: .cursor,
+                name: "Cursor",
+                isEnabled: UserDefaults.standard.bool(forKey: "cursorEnabled"),
+                paths: [
+                    ProviderDiagnostic.PathInfo(path: cursorWorkspace.path, exists: cursorWsExists, fileCount: cursorWsFiles),
+                    ProviderDiagnostic.PathInfo(path: cursorGlobal.path, exists: cursorGsExists, fileCount: cursorGsFiles)
+                ],
+                conversationCount: appState.providerStats[.cursor] ?? 0
+            ))
+            syncLogs.append("[\(Date().formatted(date: .omitted, time: .standard))] Checked Cursor: \(cursorWsFiles) workspace DBs, \(cursorGsFiles) global DB")
+
+            // OpenCode
+            let opencodePath = home.appendingPathComponent(".local/share/opencode/storage")
+            let opencodeExists = fm.fileExists(atPath: opencodePath.path)
+            let opencodeFiles = opencodeExists ? (try? fm.contentsOfDirectory(atPath: opencodePath.path))?.count ?? 0 : 0
+            results.append(ProviderDiagnostic(
+                provider: .opencode,
+                name: "OpenCode",
+                isEnabled: UserDefaults.standard.bool(forKey: "opencodeEnabled"),
+                paths: [ProviderDiagnostic.PathInfo(path: opencodePath.path, exists: opencodeExists, fileCount: opencodeFiles)],
+                conversationCount: appState.providerStats[.opencode] ?? 0
+            ))
+
+            // Gemini CLI
+            let geminiPath = home.appendingPathComponent(".gemini")
+            let geminiExists = fm.fileExists(atPath: geminiPath.path)
+            let geminiFiles = geminiExists ? (try? fm.contentsOfDirectory(atPath: geminiPath.path))?.count ?? 0 : 0
+            results.append(ProviderDiagnostic(
+                provider: .geminiCLI,
+                name: "Gemini CLI",
+                isEnabled: UserDefaults.standard.bool(forKey: "geminiCLIEnabled"),
+                paths: [ProviderDiagnostic.PathInfo(path: geminiPath.path, exists: geminiExists, fileCount: geminiFiles)],
+                conversationCount: appState.providerStats[.geminiCLI] ?? 0
+            ))
+
+            // Copilot CLI
+            let copilotPath = home.appendingPathComponent(".copilot")
+            let copilotExists = fm.fileExists(atPath: copilotPath.path)
+            let copilotFiles = copilotExists ? (try? fm.contentsOfDirectory(atPath: copilotPath.path))?.count ?? 0 : 0
+            results.append(ProviderDiagnostic(
+                provider: .copilot,
+                name: "GitHub Copilot CLI",
+                isEnabled: UserDefaults.standard.bool(forKey: "copilotEnabled"),
+                paths: [ProviderDiagnostic.PathInfo(path: copilotPath.path, exists: copilotExists, fileCount: copilotFiles)],
+                conversationCount: appState.providerStats[.copilot] ?? 0
+            ))
+
+            await MainActor.run {
+                diagnosticInfo = results
+                isLoading = false
+                syncLogs.append("[\(Date().formatted(date: .omitted, time: .standard))] Diagnostics complete")
+            }
+        }
+    }
+
+    private func exportDiagnosticReport() {
+        var report = "Retain Diagnostic Report\n"
+        report += "Generated: \(Date().formatted())\n\n"
+
+        for diag in diagnosticInfo {
+            report += "## \(diag.name)\n"
+            report += "Enabled: \(diag.isEnabled)\n"
+            report += "Conversations: \(diag.conversationCount)\n"
+            for path in diag.paths {
+                report += "  Path: \(path.path)\n"
+                report += "  Exists: \(path.exists), Files: \(path.fileCount)\n"
+            }
+            report += "\n"
+        }
+
+        report += "## Sync Logs\n"
+        report += syncLogs.joined(separator: "\n")
+
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(report, forType: .string)
     }
 }
 

@@ -86,6 +86,17 @@ final class AppState: ObservableObject {
     @Published var showSyncErrorBanner: Bool = false
     @Published var syncErrorMessage: String = ""
 
+    // MARK: - Undo Delete State
+
+    /// Recently deleted conversation (for undo functionality)
+    @Published var recentlyDeletedConversation: Conversation?
+
+    /// Whether to show the undo delete toast
+    @Published var showUndoDeleteToast: Bool = false
+
+    /// Timer task for auto-dismissing undo toast
+    private var undoToastDismissTask: Task<Void, Never>?
+
     // MARK: - Legacy sync properties (for backward compatibility)
     // TODO: Remove these after migrating all views to use syncState
 
@@ -1603,15 +1614,58 @@ final class AppState: ObservableObject {
     /// Delete a conversation
     func delete(_ conversation: Conversation) {
         do {
+            // Soft-delete the conversation
             try repository.delete(id: conversation.id)
+
+            // Update local state
             conversations.removeAll { $0.id == conversation.id }
             filteredConversations.removeAll { $0.id == conversation.id }
             starredConversationIds.remove(conversation.id)
             if selectedConversation?.id == conversation.id {
                 clearSelection()
             }
+
+            // Show undo toast
+            recentlyDeletedConversation = conversation
+            showUndoDeleteToast = true
+
+            // Auto-dismiss toast after 5 seconds
+            undoToastDismissTask?.cancel()
+            undoToastDismissTask = Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 5_000_000_000)  // 5 seconds
+                guard !Task.isCancelled else { return }
+                dismissUndoToast()
+            }
         } catch {
             errorMessage = "Failed to delete: \(error.localizedDescription)"
         }
+    }
+
+    /// Undo the most recent conversation deletion
+    func undoDelete() {
+        guard let conversation = recentlyDeletedConversation else { return }
+
+        do {
+            // Restore the conversation
+            try repository.restore(id: conversation.id)
+
+            // Re-add to local state
+            conversations.append(conversation)
+            conversations.sort { $0.updatedAt > $1.updatedAt }
+            applyCurrentFilter()
+
+            // Clear undo state
+            dismissUndoToast()
+        } catch {
+            errorMessage = "Failed to restore: \(error.localizedDescription)"
+        }
+    }
+
+    /// Dismiss the undo toast without restoring
+    func dismissUndoToast() {
+        undoToastDismissTask?.cancel()
+        undoToastDismissTask = nil
+        showUndoDeleteToast = false
+        recentlyDeletedConversation = nil
     }
 }

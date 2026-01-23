@@ -96,11 +96,47 @@ extension Provider {
 // MARK: - Semantic Colors
 
 struct AppColors {
-    // Status colors
+    // Status colors (for backgrounds/icons)
     static let pending = Color.orange
     static let approved = Color.green
     static let rejected = Color.red
     static let error = Color.red
+
+    // MARK: - WCAG AA Compliant Status Text Colors
+    // These darker variants meet 4.5:1 contrast ratio on white backgrounds
+
+    /// Dark green for text - meets WCAG AA (4.5:1 contrast on white)
+    static let statusGreenText = Color(red: 0.11, green: 0.48, blue: 0.23)  // #1D7A3B
+
+    /// Dark orange/amber for text - meets WCAG AA (4.5:1 contrast on white)
+    static let statusOrangeText = Color(red: 0.60, green: 0.36, blue: 0.0)  // #9A5B00
+
+    /// Dark red for text - meets WCAG AA (4.5:1 contrast on white)
+    static let statusRedText = Color(red: 0.70, green: 0.15, blue: 0.15)  // #B32626
+
+    /// Returns accessible text color for status, adapts to color scheme
+    static func statusTextColor(_ status: StatusType, colorScheme: ColorScheme) -> Color {
+        // In dark mode, the standard colors have sufficient contrast
+        if colorScheme == .dark {
+            switch status {
+            case .success: return .green
+            case .warning: return .orange
+            case .error: return .red
+            case .info: return .blue
+            }
+        }
+        // In light mode, use darker variants for WCAG compliance
+        switch status {
+        case .success: return statusGreenText
+        case .warning: return statusOrangeText
+        case .error: return statusRedText
+        case .info: return .blue
+        }
+    }
+
+    enum StatusType {
+        case success, warning, error, info
+    }
 
     // UI colors
     static let separator = Color(NSColor.separatorColor)

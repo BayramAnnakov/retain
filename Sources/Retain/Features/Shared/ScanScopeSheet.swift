@@ -11,7 +11,7 @@ struct ScanScopeSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: Spacing.lg) {
             HStack {
                 Text(title)
                     .font(.title2.bold())

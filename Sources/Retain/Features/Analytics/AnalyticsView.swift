@@ -60,7 +60,7 @@ struct AnalyticsView: View {
                         GridItem(.flexible()),
                         GridItem(.flexible()),
                         GridItem(.flexible())
-                    ], spacing: 16) {
+                    ], spacing: Spacing.lg) {
                         StatCard(
                             title: "Total Conversations",
                             value: "\(stats.totalConversations)",
@@ -106,7 +106,7 @@ struct AnalyticsView: View {
                     .padding(.horizontal)
 
                     // Charts Row
-                    HStack(spacing: 16) {
+                    HStack(spacing: Spacing.lg) {
                         // Activity Chart
                         GroupBox {
                             if activityMode == .grid {
@@ -152,7 +152,7 @@ struct AnalyticsView: View {
                     .padding(.horizontal)
 
                     // Learning Funnel + Repeatability
-                    HStack(spacing: 16) {
+                    HStack(spacing: Spacing.lg) {
                         GroupBox("Learning Funnel") {
                             LearningFunnelView(stats: stats.learningFunnel)
                                 .frame(height: 200)
@@ -167,7 +167,7 @@ struct AnalyticsView: View {
                     }
                     .padding(.horizontal)
 
-                    HStack(spacing: 16) {
+                    HStack(spacing: Spacing.lg) {
                         GroupBox("Task-Type Affinity") {
                             TaskAffinityView(data: stats.taskAffinity)
                                 .frame(height: 240)
@@ -1192,7 +1192,7 @@ struct StatCard: View {
         }
         .padding()
         .background(Color(NSColor.controlBackgroundColor))
-        .cornerRadius(12)
+        .cornerRadius(CornerRadius.xl)
     }
 }
 
@@ -1655,7 +1655,7 @@ struct MetricPill: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
         .background(Color(NSColor.controlBackgroundColor))
-        .cornerRadius(8)
+        .cornerRadius(CornerRadius.lg)
     }
 }
 

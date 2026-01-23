@@ -1,4 +1,16 @@
+import AppKit
 import SwiftUI
+
+// MARK: - Accessibility Announcements
+
+/// Post a VoiceOver announcement for dynamic content changes
+private func announceToVoiceOver(_ message: String) {
+    NSAccessibility.post(
+        element: NSApp.mainWindow as Any,
+        notification: .announcementRequested,
+        userInfo: [.announcement: message, .priority: NSAccessibilityPriorityLevel.high]
+    )
+}
 
 // MARK: - Sync Overlay View
 
@@ -229,6 +241,10 @@ private struct OverallProgressBar: View {
         .onAppear {
             animatedProgress = progress
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Sync progress")
+        .accessibilityValue("\(Int(progress * 100)) percent")
+        .accessibilityAddTraits(.updatesFrequently)
     }
 }
 
@@ -308,6 +324,10 @@ struct SyncStatusBar: View {
         .overlay(alignment: .top) {
             Divider()
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Sync in progress")
+        .accessibilityValue("\(syncState.statusMessage), \(Int(syncState.overallProgress * 100)) percent complete")
+        .accessibilityAddTraits(.updatesFrequently)
     }
 }
 
@@ -400,11 +420,17 @@ struct SyncCompleteToast: View {
             .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
             .transition(.move(edge: .top).combined(with: .opacity))
             .onAppear {
+                // Announce to VoiceOver
+                announceToVoiceOver("Sync complete. \(stats.conversationsUpdated) conversations updated.")
+
                 // Auto-dismiss after 4 seconds
                 DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
                     dismissToast()
                 }
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Sync complete. \(stats.conversationsUpdated) conversations updated.")
+            .accessibilityAddTraits(.isStaticText)
         }
     }
 
@@ -467,6 +493,69 @@ struct SyncErrorBanner: View {
                 .strokeBorder(AppColors.error.opacity(0.3), lineWidth: 1)
         )
         .transition(.move(edge: .top).combined(with: .opacity))
+        .onAppear {
+            // Announce error to VoiceOver
+            announceToVoiceOver("Sync failed. \(message)")
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Sync failed. \(message). Retry button available.")
+        .accessibilityAddTraits(.isStaticText)
+    }
+}
+
+// MARK: - Undo Delete Toast
+
+/// Toast shown after deleting a conversation, allowing undo
+struct UndoDeleteToast: View {
+    let conversationTitle: String
+    let onUndo: () -> Void
+    let onDismiss: () -> Void
+
+    var body: some View {
+        HStack(spacing: Spacing.md) {
+            Image(systemName: "trash")
+                .font(.system(size: IconSize.md))
+                .foregroundColor(AppColors.secondaryText)
+
+            VStack(alignment: .leading, spacing: Spacing.xxs) {
+                Text("Conversation deleted")
+                    .font(AppFont.headline)
+                    .foregroundColor(AppColors.primaryText)
+
+                Text(conversationTitle)
+                    .font(AppFont.caption)
+                    .foregroundColor(AppColors.secondaryText)
+                    .lineLimit(1)
+            }
+
+            Spacer()
+
+            Button("Undo") {
+                onUndo()
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+
+            Button {
+                onDismiss()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: IconSize.xs, weight: .medium))
+                    .foregroundColor(AppColors.tertiaryText)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, Spacing.lg)
+        .padding(.vertical, Spacing.md)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: CornerRadius.lg))
+        .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
+        .onAppear {
+            // Announce to VoiceOver
+            announceToVoiceOver("Conversation deleted. Tap Undo to restore.")
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Conversation \(conversationTitle) deleted. Undo button available.")
+        .accessibilityAddTraits(.isStaticText)
     }
 }
 

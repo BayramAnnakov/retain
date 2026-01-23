@@ -151,20 +151,22 @@ final class ConversationRepository: @unchecked Sendable {
 
     // MARK: - Read
 
-    /// Fetch all conversations ordered by update time
+    /// Fetch all conversations ordered by update time (excludes soft-deleted)
     func fetchAll() throws -> [Conversation] {
         try database.read { db in
             try Conversation
+                .filter(Conversation.Columns.deletedAt == nil)
                 .order(Conversation.Columns.updatedAt.desc)
                 .fetchAll(db)
         }
     }
 
-    /// Fetch conversations by provider
+    /// Fetch conversations by provider (excludes soft-deleted)
     func fetch(provider: Provider) throws -> [Conversation] {
         try database.read { db in
             try Conversation
                 .filter(Conversation.Columns.provider == provider.rawValue)
+                .filter(Conversation.Columns.deletedAt == nil)
                 .order(Conversation.Columns.updatedAt.desc)
                 .fetchAll(db)
         }
@@ -270,14 +272,45 @@ final class ConversationRepository: @unchecked Sendable {
     // MARK: - Delete
 
     /// Delete a conversation and its messages (cascade)
+    /// Soft-delete a conversation (sets deletedAt timestamp)
     func delete(id: UUID) throws {
+        try database.write { db in
+            try db.execute(
+                sql: "UPDATE conversations SET deletedAt = ? WHERE id = ?",
+                arguments: [Date(), id]
+            )
+        }
+    }
+
+    /// Restore a soft-deleted conversation
+    func restore(id: UUID) throws {
+        try database.write { db in
+            try db.execute(
+                sql: "UPDATE conversations SET deletedAt = NULL WHERE id = ?",
+                arguments: [id]
+            )
+        }
+    }
+
+    /// Permanently delete a conversation (hard delete)
+    func permanentlyDelete(id: UUID) throws {
         try database.write { db in
             try Conversation.deleteOne(db, key: id)
         }
     }
 
-    /// Delete all conversations from a provider
+    /// Soft-delete all conversations from a provider
     func delete(provider: Provider) throws {
+        try database.write { db in
+            try db.execute(
+                sql: "UPDATE conversations SET deletedAt = ? WHERE provider = ?",
+                arguments: [Date(), provider.rawValue]
+            )
+        }
+    }
+
+    /// Permanently delete all conversations from a provider (hard delete)
+    func permanentlyDelete(provider: Provider) throws {
         try database.write { db in
             try Conversation
                 .filter(Conversation.Columns.provider == provider.rawValue)

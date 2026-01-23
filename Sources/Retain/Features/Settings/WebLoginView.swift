@@ -109,7 +109,7 @@ struct WebLoginSheet: View {
                     }
                     .padding()
                     .background(.regularMaterial)
-                    .cornerRadius(12)
+                    .cornerRadius(CornerRadius.xl)
                 }
             }
 

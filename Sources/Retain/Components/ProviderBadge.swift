@@ -54,7 +54,6 @@ struct ProviderBadge: View {
         .background(provider.brandColor.opacity(0.15))
         .foregroundStyle(provider.brandColor)
         .clipShape(Capsule())
-        .shadow(color: provider.brandColor.opacity(0.15), radius: 2, y: 1)
     }
 }
 
@@ -78,6 +77,7 @@ struct ProviderSidebarRow: View {
     var syncStatus: SyncStatus = .idle
     var connectionStatus: ConnectionStatus? = nil
     @FocusState private var isFocused: Bool
+    @Environment(\.colorScheme) private var colorScheme
 
     enum SyncStatus {
         case idle, syncing, error
@@ -107,18 +107,19 @@ struct ProviderSidebarRow: View {
         }
     }
 
+    /// WCAG AA compliant connection status color
     private var connectionColor: Color {
         switch connectionStatus {
         case .connected:
-            return .green
+            return AppColors.statusTextColor(.success, colorScheme: colorScheme)
         case .verifying:
-            return .blue
+            return AppColors.statusTextColor(.info, colorScheme: colorScheme)
         case .saved:
-            return .orange
+            return AppColors.statusTextColor(.warning, colorScheme: colorScheme)
         case .disconnected:
             return AppColors.secondaryText
         case .error:
-            return .red
+            return AppColors.statusTextColor(.error, colorScheme: colorScheme)
         case .none:
             return AppColors.secondaryText
         }

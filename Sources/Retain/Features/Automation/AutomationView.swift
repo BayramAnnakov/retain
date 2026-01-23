@@ -379,7 +379,7 @@ private struct AutomationEmptyState: View {
     let onScan: () -> Void
 
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: Spacing.lg) {
             Image(systemName: "arrow.triangle.2.circlepath")
                 .font(.system(size: 48))
                 .foregroundColor(.blue.opacity(0.6))
@@ -413,7 +413,7 @@ private struct AutomationEmptyState: View {
                 }
                 .padding()
                 .background(Color(.controlBackgroundColor))
-                .cornerRadius(8)
+                .cornerRadius(CornerRadius.lg)
             }
             .frame(maxWidth: 320)
 
@@ -643,7 +643,7 @@ private struct HowAutomationWorksView: View {
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
                             .background(Color.purple.opacity(0.1))
-                            .cornerRadius(8)
+                            .cornerRadius(CornerRadius.lg)
                         Text("e.g., review, explain, write, fix")
                             .font(.caption)
                             .foregroundColor(.secondary)
@@ -654,7 +654,7 @@ private struct HowAutomationWorksView: View {
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
                             .background(Color.blue.opacity(0.1))
-                            .cornerRadius(8)
+                            .cornerRadius(CornerRadius.lg)
                         Text("e.g., code, tests, docs, PR")
                             .font(.caption)
                             .foregroundColor(.secondary)

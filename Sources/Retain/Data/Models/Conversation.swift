@@ -18,6 +18,7 @@ struct Conversation: Identifiable, Hashable {
     var embedding: Data?         // Vector embedding for semantic search
     var embeddingProvider: String?  // Which provider generated the embedding (e.g., "Apple NaturalLanguage", "Ollama")
     var rawPayload: Data?        // Raw provider payload for structured rendering
+    var deletedAt: Date?         // Soft-delete timestamp (nil = not deleted)
 
     init(
         id: UUID = UUID(),
@@ -34,7 +35,8 @@ struct Conversation: Identifiable, Hashable {
         messageCount: Int = 0,
         embedding: Data? = nil,
         embeddingProvider: String? = nil,
-        rawPayload: Data? = nil
+        rawPayload: Data? = nil,
+        deletedAt: Date? = nil
     ) {
         self.id = id
         self.provider = provider
@@ -51,6 +53,12 @@ struct Conversation: Identifiable, Hashable {
         self.embedding = embedding
         self.embeddingProvider = embeddingProvider
         self.rawPayload = rawPayload
+        self.deletedAt = deletedAt
+    }
+
+    /// Whether this conversation is soft-deleted
+    var isDeleted: Bool {
+        deletedAt != nil
     }
 }
 
@@ -75,6 +83,7 @@ extension Conversation: Codable, FetchableRecord, PersistableRecord {
         static let embedding = Column(CodingKeys.embedding)
         static let embeddingProvider = Column(CodingKeys.embeddingProvider)
         static let rawPayload = Column(CodingKeys.rawPayload)
+        static let deletedAt = Column(CodingKeys.deletedAt)
     }
 
     // Association with messages

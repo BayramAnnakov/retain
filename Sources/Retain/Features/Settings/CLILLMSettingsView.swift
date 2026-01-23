@@ -257,7 +257,7 @@ struct BackendStatusBadge: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background(statusColor.opacity(0.1))
-        .cornerRadius(8)
+        .cornerRadius(CornerRadius.lg)
     }
 
     private var statusColor: Color {

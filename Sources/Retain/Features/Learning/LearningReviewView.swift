@@ -464,7 +464,7 @@ struct EmptyQueueView: View {
             )
         } else if let stats = lastScanStats, stats.isEmpty {
             // Show scan feedback when nothing was found
-            VStack(spacing: 16) {
+            VStack(spacing: Spacing.lg) {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 48))
                     .foregroundColor(.secondary.opacity(0.6))
@@ -536,14 +536,14 @@ struct EmptyQueueView: View {
                     }
                     .padding()
                     .background(Color(.controlBackgroundColor))
-                    .cornerRadius(8)
+                    .cornerRadius(CornerRadius.lg)
                 }
                 .frame(maxWidth: 340)
             }
             .padding()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
-            VStack(spacing: 16) {
+            VStack(spacing: Spacing.lg) {
                 Image(systemName: "lightbulb")
                     .font(.system(size: 48))
                     .foregroundColor(.orange.opacity(0.6))
@@ -577,7 +577,7 @@ struct EmptyQueueView: View {
                     }
                     .padding()
                     .background(Color(.controlBackgroundColor))
-                    .cornerRadius(8)
+                    .cornerRadius(CornerRadius.lg)
                 }
                 .frame(maxWidth: 320)
 
@@ -830,7 +830,7 @@ struct LearningDetailView: View {
                 }
                 .padding()
                 .background(Color(NSColor.controlBackgroundColor))
-                .cornerRadius(8)
+                .cornerRadius(CornerRadius.lg)
 
                 Button("Open Conversation") {
                     onOpenConversation()
@@ -849,7 +849,7 @@ struct LearningDetailView: View {
                         .frame(minHeight: 80)
                         .padding(8)
                         .background(Color(NSColor.textBackgroundColor))
-                        .cornerRadius(8)
+                        .cornerRadius(CornerRadius.lg)
                         .overlay(
                             RoundedRectangle(cornerRadius: 8)
                                 .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
@@ -873,7 +873,7 @@ struct LearningDetailView: View {
                             .textSelection(.enabled)
                             .padding(8)
                             .background(Color(NSColor.textBackgroundColor))
-                            .cornerRadius(8)
+                            .cornerRadius(CornerRadius.lg)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 8)
                                     .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
@@ -919,7 +919,7 @@ struct LearningDetailView: View {
                         .frame(minHeight: 120)
                         .padding(8)
                         .background(Color(NSColor.textBackgroundColor))
-                        .cornerRadius(8)
+                        .cornerRadius(CornerRadius.lg)
                         .overlay(
                             RoundedRectangle(cornerRadius: 8)
                                 .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
@@ -978,7 +978,7 @@ struct ConfidenceBadge: View {
         .padding(.vertical, 4)
         .background(confidenceColor.opacity(0.1))
         .foregroundColor(confidenceColor)
-        .cornerRadius(12)
+        .cornerRadius(CornerRadius.xl)
     }
 
     private var confidenceColor: Color {

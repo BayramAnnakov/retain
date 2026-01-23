@@ -46,7 +46,7 @@ struct ConversationDetailView: View {
             } else {
                 ScrollViewReader { proxy in
                     ScrollView {
-                        LazyVStack(alignment: .leading, spacing: 16) {
+                        LazyVStack(alignment: .leading, spacing: Spacing.lg) {
                             ForEach(appState.selectedMessages.filter { shouldDisplayMessage($0) }) { message in
                                 MessageBubble(
                                     message: message,
@@ -298,7 +298,7 @@ struct MessageBubble: View {
         .padding(.horizontal, Spacing.lg)
         .padding(.vertical, Spacing.md)
         .background(roleColor.opacity(0.08))
-        .cornerRadius(12)
+        .cornerRadius(CornerRadius.xl)
         .overlay(alignment: .leading) {
             RoundedRectangle(cornerRadius: 12)
                 .fill(roleColor.opacity(0.35))
@@ -1085,7 +1085,7 @@ struct StructuredMessageContentView: View {
         }
         .padding(10)
         .background(Color.secondary.opacity(0.08))
-        .cornerRadius(8)
+        .cornerRadius(CornerRadius.lg)
     }
 
     @ViewBuilder
@@ -1101,7 +1101,7 @@ struct StructuredMessageContentView: View {
         }
         .padding(10)
         .background(Color.secondary.opacity(0.06))
-        .cornerRadius(8)
+        .cornerRadius(CornerRadius.lg)
     }
 
     @ViewBuilder
@@ -1161,7 +1161,7 @@ struct StructuredMessageContentView: View {
         }
         .padding(10)
         .background(Color.secondary.opacity(0.06))
-        .cornerRadius(8)
+        .cornerRadius(CornerRadius.lg)
     }
 
     @ViewBuilder
@@ -1177,7 +1177,7 @@ struct StructuredMessageContentView: View {
         }
         .padding(10)
         .background(Color.secondary.opacity(0.05))
-        .cornerRadius(8)
+        .cornerRadius(CornerRadius.lg)
     }
 
     private func prettyPrintedJSON(_ object: [String: ChatGPTWebSync.AnyCodable]) -> String? {
@@ -1427,7 +1427,7 @@ struct CodeBlockView: View {
             }
         }
         .background(Color(NSColor.textBackgroundColor))
-        .cornerRadius(8)
+        .cornerRadius(CornerRadius.lg)
         .overlay(
             RoundedRectangle(cornerRadius: 8)
                 .stroke(Color.secondary.opacity(0.2), lineWidth: 1)

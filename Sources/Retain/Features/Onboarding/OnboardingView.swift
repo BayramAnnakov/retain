@@ -63,12 +63,26 @@ struct OnboardingView: View {
                         .accessibilityHidden(true)
                 }
             }
-            .padding(.bottom, 20)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Step \(currentStep.rawValue + 1) of \(OnboardingStep.allCases.count)")
+
+            // Skip option for power users
+            Button("Skip setup") {
+                skipOnboarding()
+            }
+            .font(.caption)
+            .foregroundColor(.secondary)
+            .buttonStyle(.plain)
+            .padding(.bottom, 20)
+            .accessibilityHint("Skip onboarding and configure settings manually later")
         }
         .frame(width: 620, height: 650)
         .background(Color(NSColor.windowBackgroundColor))
+    }
+
+    private func skipOnboarding() {
+        isPresented = false
+        appState.completeOnboarding()
     }
 
     private func completeOnboarding() {
@@ -152,7 +166,7 @@ struct FeatureCard: View {
     let description: String
 
     var body: some View {
-        HStack(alignment: .top, spacing: 16) {
+        HStack(alignment: .top, spacing: Spacing.lg) {
             Image(systemName: icon)
                 .font(.title2)
                 .foregroundColor(iconColor)
@@ -172,7 +186,7 @@ struct FeatureCard: View {
         }
         .padding(14)
         .background(Color(NSColor.controlBackgroundColor))
-        .cornerRadius(8)
+        .cornerRadius(CornerRadius.lg)
     }
 }
 
@@ -210,7 +224,7 @@ struct CLISourcesStepView: View {
             .padding(.top, 30)
 
             // Dynamic CLI tool cards from registry
-            VStack(spacing: 16) {
+            VStack(spacing: Spacing.lg) {
                 ForEach(cliProviders, id: \.provider) { config in
                     CLISourceCard(
                         name: config.displayName,
@@ -478,11 +492,11 @@ struct WebAccountsStepView: View {
             }
             .padding()
             .background(Color.blue.opacity(0.1))
-            .cornerRadius(12)
+            .cornerRadius(CornerRadius.xl)
             .padding(.horizontal, 30)
 
             // Web account cards
-            VStack(spacing: 16) {
+            VStack(spacing: Spacing.lg) {
                 WebAccountCard(
                     name: "Claude.ai",
                     icon: "globe",
@@ -735,7 +749,7 @@ struct ReadyStepView: View {
     }
 
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: Spacing.lg) {
             // Header
             Image(systemName: "checkmark.circle")
                 .font(.system(size: 48))

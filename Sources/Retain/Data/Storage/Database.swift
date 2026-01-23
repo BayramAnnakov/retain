@@ -687,6 +687,21 @@ final class AppDatabase {
             }
         }
 
+        // Version 13: Soft-delete support for conversations
+        migrator.registerMigration("v13_soft_delete") { db in
+            try db.alter(table: "conversations") { t in
+                t.add(column: "deletedAt", .datetime)
+            }
+
+            // Index for efficient filtering of non-deleted conversations
+            try db.create(
+                index: "conversations_deletedAt",
+                on: "conversations",
+                columns: ["deletedAt"],
+                ifNotExists: true
+            )
+        }
+
         return migrator
     }
 }

@@ -72,7 +72,7 @@ struct ContentView: View {
                 Color.clear
             }
         }
-        .frame(minWidth: 1120, minHeight: 600)  // +60pt for wider content pane
+        .frame(minWidth: 980, minHeight: 550)  // Supports 11" MacBook Air (1366×768 effective)
         .accessibilityIdentifier("MainWindow")
         .alert("Error", isPresented: .constant(appState.errorMessage != nil)) {
             Button("OK") {
@@ -578,8 +578,11 @@ struct SidebarFooter: View {
                     Image(systemName: "gearshape")
                         .font(.system(size: IconSize.md))
                         .foregroundColor(AppColors.secondaryText)
+                        .frame(width: 24, height: 24)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .contentShape(Rectangle())
                 .accessibilityIdentifier("SettingsButton")
             }
             .padding(.horizontal, Spacing.md)
@@ -645,8 +648,12 @@ struct ConversationListView: View {
                 isSearchActive: isSearchActive,
                 isSearchFieldFocused: $isSearchFieldFocused
             )
-            .onChange(of: appState.shouldFocusSearch) { _, shouldFocus in
-                if shouldFocus {
+            .task(id: appState.shouldFocusSearch) {
+                // Use task modifier for better lifecycle handling
+                guard appState.shouldFocusSearch else { return }
+                // Small delay ensures view is ready for focus
+                try? await Task.sleep(nanoseconds: 50_000_000)  // 50ms
+                await MainActor.run {
                     isSearchFieldFocused = true
                     appState.shouldFocusSearch = false
                 }
@@ -720,7 +727,20 @@ struct ConversationListView: View {
                 conversationToDelete = nil
             }
         } message: { conversation in
-            Text("Are you sure you want to delete \"\(conversation.title ?? "Untitled")\"? This action cannot be undone.")
+            Text("Are you sure you want to delete \"\(conversation.title ?? "Untitled")\"? You can undo this action for 5 seconds.")
+        }
+        // Undo delete toast overlay
+        .overlay(alignment: .bottom) {
+            if appState.showUndoDeleteToast, let deleted = appState.recentlyDeletedConversation {
+                UndoDeleteToast(
+                    conversationTitle: deleted.displayTitle,
+                    onUndo: { appState.undoDelete() },
+                    onDismiss: { appState.dismissUndoToast() }
+                )
+                .padding(.bottom, Spacing.xl)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .animation(.spring(response: 0.3, dampingFraction: 0.8), value: appState.showUndoDeleteToast)
+            }
         }
     }
 
@@ -945,7 +965,6 @@ struct ConversationListRow: View {
         .background(isHovering ? Color.accentColor.opacity(0.08) : Color.clear)
         .cornerRadius(CornerRadius.md)
         .focusRing(isFocused, cornerRadius: CornerRadius.md)
-        .scaleEffect(isHovering ? 1.005 : 1.0)
         .animation(.easeOut(duration: 0.1), value: isHovering)
         .onHover { hovering in
             isHovering = hovering
