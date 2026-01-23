@@ -2,6 +2,8 @@
 
 Native macOS app that aggregates AI conversations from multiple platforms into a unified, searchable knowledge base with intelligent learning extraction.
 
+**GitHub:** https://github.com/BayramAnnakov/retain
+
 ## Architecture
 
 ```
