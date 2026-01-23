@@ -9,7 +9,7 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 BUILD_DIR="$PROJECT_DIR/.build/release"
 DIST_DIR="$PROJECT_DIR/dist"
 APP_NAME="Retain"
-VERSION="0.1.4-beta"
+VERSION="0.1.5-beta"
 
 echo "=== Building $APP_NAME $VERSION ==="
 
@@ -86,7 +86,7 @@ cat > "$APP_BUNDLE/Contents/Info.plist" << EOF
     <key>CFBundleShortVersionString</key>
     <string>$VERSION</string>
     <key>CFBundleVersion</key>
-    <string>1</string>
+    <string>$VERSION</string>
     <key>LSMinimumSystemVersion</key>
     <string>14.0</string>
     <key>LSApplicationCategoryType</key>
