@@ -11,15 +11,15 @@
                 <h2>What's New in 0.1.5-beta</h2>
                 <p>Fix Sparkle auto-update, Settings icon, add Diagnostics tab</p>
             ]]></description>
-            <pubDate>Fri, 23 Jan 2026 09:37:45 -0800</pubDate>
+            <pubDate>Fri, 23 Jan 2026 09:54:11 -0800</pubDate>
             <sparkle:version>2</sparkle:version>
             <sparkle:shortVersionString>0.1.5-beta</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <enclosure
                 url="https://github.com/BayramAnnakov/retain/releases/download/v0.1.5-beta/Retain-0.1.5-beta.dmg"
-                length="6491522"
+                length="6503001"
                 type="application/octet-stream"
-                sparkle:edSignature="ePn7i2KOFrZKJsklrEOEHffgbKmWiKGuvm0dILKZCCYr3HzC5DR65APF5glgFkyP+7VqFJc2YNUwsVKtrxKcCw=="
+                sparkle:edSignature="WNl/H+Z/l42SlkFArHR2pFObGk2LZpYrC293UAsURkLijzrO966Ot5COai3D7ZQ4fAIk0XjH14a+chZMK444BA=="
             />
         </item>
     </channel>
