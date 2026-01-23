@@ -245,16 +245,48 @@ migrator.registerMigration("v2_feature") { db in
 # 3. Create GitHub release
 git tag v0.1.x-beta && git push origin v0.1.x-beta
 gh release create v0.1.x-beta dist/Retain-0.1.x-beta.dmg dist/Retain-0.1.x-beta.zip --prerelease
+
+# 4. Generate and publish appcast for auto-updates
+./scripts/generate-appcast.sh 0.1.x-beta "Release notes here"
+git add appcast.xml && git commit -m "Update appcast for v0.1.x-beta" && git push
 ```
+
+### Auto-Updates (Sparkle)
+
+The app uses [Sparkle](https://sparkle-project.org/) for automatic updates:
+
+- **Appcast URL**: `https://raw.githubusercontent.com/BayramAnnakov/retain/main/appcast.xml`
+- **EdDSA Public Key**: Stored in Info.plist (`SUPublicEDKey`)
+- **Private Key**: Stored in macOS Keychain (generated with `generate_keys`)
+
+**Key files:**
+- `Services/UpdateController.swift` - Sparkle integration
+- `scripts/generate-appcast.sh` - Generates signed appcast.xml
+- `appcast.xml` - Update feed (committed to repo)
+
+**Regenerating signing keys** (only if needed):
+```bash
+.build/artifacts/sparkle/Sparkle/bin/generate_keys
+# Update SUPublicEDKey in scripts/build-release.sh
+```
+
+**Framework bundling**: The build script copies `Sparkle.framework` to `Contents/Frameworks/` and sets `@executable_path/../Frameworks` rpath. Without this, the app crashes on launch with "Library not loaded".
+
+**Bootstrap version**: v0.1.3-beta is the first release with Sparkle. Users on older versions must manually update once; future updates will auto-notify.
 
 ### Key Points
 
 - **Xcode 15.4+ required**: `nonisolated(unsafe)` syntax requires Swift 5.10; CI workflows must use Xcode 15.4+
 - **CI should NOT upload release assets**: Release workflows overwrite manually notarized builds; use verify-only CI
 - **Notarization is on the .app bundle**: The ticket is stapled to the app, not the DMG container
-- **DMG MUST include Applications symlink**: Always create DMG with drag-to-install support:
-  ```bash
-  mkdir -p dmg_staging && cp -R Retain.app dmg_staging/ && ln -sf /Applications dmg_staging/Applications
-  hdiutil create -volname "Retain" -srcfolder dmg_staging -ov -format UDZO Retain-x.x.x.dmg
-  ```
+- **DMG creation**: The sign-and-notarize script uses `create-dmg` (install with `brew install create-dmg`) with fallback to `hdiutil`. Both methods include the Applications symlink for drag-to-install support.
 - **Parser version bump**: When changing `ClaudeCodeParser` display logic (titles, previews), bump `claudeCodeParserVersion` in `SyncService.swift` to force re-sync on user's next launch
+
+### DMG Creation Tools
+
+The `sign-and-notarize.sh` script handles DMG creation with a cascade of fallbacks:
+1. **create-dmg** (best quality, custom window layout) - install with `brew install create-dmg`
+2. **hdiutil direct** - standard macOS tool
+3. **Sparse image method** - workaround for "Operation not permitted" errors on some systems
+
+All methods include the Applications symlink for drag-to-install support.
