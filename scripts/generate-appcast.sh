@@ -4,8 +4,8 @@ set -e
 # Generate Sparkle appcast.xml for Retain updates
 # This script creates/updates the appcast file for auto-updates
 #
-# Usage: ./scripts/generate-appcast.sh <version> [release-notes]
-# Example: ./scripts/generate-appcast.sh 0.1.3-beta "Bug fixes and improvements"
+# Usage: ./scripts/generate-appcast.sh <version> [release-notes] [build-number]
+# Example: ./scripts/generate-appcast.sh 0.1.5-beta "Bug fixes" 2
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
@@ -13,6 +13,7 @@ DIST_DIR="$PROJECT_DIR/dist"
 APP_NAME="Retain"
 VERSION="${1:-}"
 RELEASE_NOTES="${2:-Bug fixes and improvements}"
+BUILD_NUMBER="${3:-$VERSION}"  # Defaults to VERSION if not specified
 
 # GitHub repo info (update if repo changes)
 GITHUB_OWNER="BayramAnnakov"
@@ -82,7 +83,7 @@ cat > "$APPCAST_FILE" << EOF
                 <p>$RELEASE_NOTES</p>
             ]]></description>
             <pubDate>$PUB_DATE</pubDate>
-            <sparkle:version>$VERSION</sparkle:version>
+            <sparkle:version>$BUILD_NUMBER</sparkle:version>
             <sparkle:shortVersionString>$VERSION</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <enclosure

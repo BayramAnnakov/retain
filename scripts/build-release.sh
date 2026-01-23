@@ -10,8 +10,9 @@ BUILD_DIR="$PROJECT_DIR/.build/release"
 DIST_DIR="$PROJECT_DIR/dist"
 APP_NAME="Retain"
 VERSION="0.1.5-beta"
+BUILD_NUMBER="2"  # Increment for each release. Used by Sparkle for version comparison.
 
-echo "=== Building $APP_NAME $VERSION ==="
+echo "=== Building $APP_NAME $VERSION (build $BUILD_NUMBER) ==="
 
 # Clean previous build
 rm -rf "$DIST_DIR"
@@ -86,7 +87,7 @@ cat > "$APP_BUNDLE/Contents/Info.plist" << EOF
     <key>CFBundleShortVersionString</key>
     <string>$VERSION</string>
     <key>CFBundleVersion</key>
-    <string>$VERSION</string>
+    <string>$BUILD_NUMBER</string>
     <key>LSMinimumSystemVersion</key>
     <string>14.0</string>
     <key>LSApplicationCategoryType</key>
