@@ -184,9 +184,13 @@ struct CLISourcesStepView: View {
     let onBack: () -> Void
     let onContinue: () -> Void
 
-    /// CLI providers from the registry
+    /// Core CLI providers for onboarding (stable, well-tested)
+    /// Additional providers can be enabled in Settings after onboarding
+    private static let coreProviders: Set<Provider> = [.claudeCode, .codex]
+
+    /// CLI providers from the registry - only core providers in onboarding
     private var cliProviders: [ProviderConfiguration] {
-        ProviderRegistry.cliProviders
+        ProviderRegistry.cliProviders.filter { Self.coreProviders.contains($0.provider) }
     }
 
     @State private var providerStatuses: [Provider: CLIToolStatus] = [:]
@@ -696,6 +700,9 @@ struct ReadyStepView: View {
     let onBack: () -> Void
     let onComplete: () -> Void
 
+    /// Core providers shown in onboarding (matches CLISourcesStepView)
+    private static let coreProviders: Set<Provider> = [.claudeCode, .codex]
+
     private var claudeConnected: Bool {
         appState.webSyncEngine.claudeConnectionStatus.isConnected
     }
@@ -722,6 +729,11 @@ struct ReadyStepView: View {
         }
     }
 
+    /// Filtered CLI providers for onboarding summary
+    private var coreCliProviders: [ProviderConfiguration] {
+        ProviderRegistry.cliProviders.filter { Self.coreProviders.contains($0.provider) }
+    }
+
     var body: some View {
         VStack(spacing: 16) {
             // Header
@@ -740,10 +752,10 @@ struct ReadyStepView: View {
                     .foregroundColor(.secondary)
             }
 
-            // Summary - Dynamic from registry
+            // Summary - Only core providers shown in onboarding
             VStack(alignment: .leading, spacing: 8) {
-                // CLI providers
-                ForEach(ProviderRegistry.cliProviders, id: \.provider) { config in
+                // Core CLI providers (Claude Code, Codex)
+                ForEach(coreCliProviders, id: \.provider) { config in
                     SourceSummaryRow(
                         name: config.displayName,
                         isEnabled: isProviderEnabled(config.provider),

@@ -82,6 +82,29 @@ struct SettingsView: View {
                 }
             }
         }
+        // Keychain explanation alert (needed when Settings opens as separate window)
+        .alert(
+            "Keychain Access Required",
+            isPresented: $appState.showingKeychainExplanation,
+            presenting: appState.pendingKeychainContext
+        ) { _ in
+            Button("Continue") {
+                appState.showingKeychainExplanation = false
+                appState.pendingKeychainContext = nil
+            }
+            Button("Cancel", role: .cancel) {
+                appState.showingKeychainExplanation = false
+                appState.pendingKeychainContext = nil
+            }
+        } message: { context in
+            Text(keychainExplanationMessage(for: context))
+        }
+    }
+
+    /// Generate explanation message for keychain access
+    private func keychainExplanationMessage(for context: BrowserCookieKeychainPromptContext) -> String {
+        let browserLabel = context.label
+        return "Retain needs to read the \(browserLabel) Safe Storage key from your Keychain to decrypt cookies.\n\nmacOS will ask for your permission. This is a one-time request per browser."
     }
 }
 

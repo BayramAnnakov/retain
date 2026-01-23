@@ -223,6 +223,10 @@ final class AppState: ObservableObject {
     private var syncStateCancellable: AnyCancellable?
     private var syncTask: Task<Void, Never>?
 
+    /// Pending providers to sync after current sync completes
+    /// Used when user enables a provider while a sync is already running
+    private var pendingSyncProviders: Set<Provider> = []
+
     /// Pending file URLs for debounced incremental sync
     private var pendingFileChanges: Set<URL> = []
     private var fileChangeDebounceTask: Task<Void, Never>?
@@ -801,7 +805,18 @@ final class AppState: ObservableObject {
     /// Uses unified SyncService to coordinate local + web sync
     func syncAll(localProviders: Set<Provider>? = nil, webProviders: Set<Provider>? = nil) async {
         guard hasCompletedOnboarding else { return }
-        guard !isSyncing else { return }
+
+        // If sync is already running and specific providers are requested,
+        // queue them to be synced after the current sync completes
+        if isSyncing {
+            if let providers = localProviders {
+                pendingSyncProviders.formUnion(providers)
+                #if DEBUG
+                print("🟡 Sync in progress, queued providers: \(providers.map { $0.displayName })")
+                #endif
+            }
+            return
+        }
 
         // Reset UI state
         showSyncCompleteToast = false
@@ -860,6 +875,23 @@ final class AppState: ObservableObject {
                 // Error handled by SyncService state updates
             }
         }
+
+        // Wait for sync to complete, then process any pending providers
+        Task { [weak self] in
+            await self?.syncTask?.value
+            await self?.processPendingSyncProviders()
+        }
+    }
+
+    /// Process any pending sync providers that were queued during an active sync
+    private func processPendingSyncProviders() async {
+        guard !pendingSyncProviders.isEmpty else { return }
+        let providers = pendingSyncProviders
+        pendingSyncProviders.removeAll()
+        #if DEBUG
+        print("🟢 Processing queued providers: \(providers.map { $0.displayName })")
+        #endif
+        await syncAll(localProviders: providers)
     }
 
     /// Force full sync by clearing cache first, then syncing all sources

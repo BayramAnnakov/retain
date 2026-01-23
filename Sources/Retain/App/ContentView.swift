@@ -292,7 +292,12 @@ struct SidebarView: View {
 
             // Setup Progress Section (for first-time users)
             if !hasCompletedSetup {
-                SetupProgressSection(progress: setupProgress, hint: setupHint)
+                SetupProgressSection(
+                    progress: setupProgress,
+                    hint: setupHint,
+                    isSyncing: appState.isSyncing,
+                    syncMessage: appState.syncState.statusMessage
+                )
             }
         }
         .listStyle(.sidebar)
@@ -428,20 +433,31 @@ struct SidebarView: View {
 struct SetupProgressSection: View {
     let progress: Double
     let hint: String
+    var isSyncing: Bool = false
+    var syncMessage: String = ""
 
     var body: some View {
         Section {
             VStack(alignment: .leading, spacing: Spacing.sm) {
-                Text("Setup Progress")
-                    .font(AppFont.caption)
-                    .foregroundColor(AppColors.tertiaryText)
+                HStack(spacing: Spacing.xs) {
+                    if isSyncing {
+                        ProgressView()
+                            .scaleEffect(0.6)
+                            .frame(width: 12, height: 12)
+                    }
+                    Text(isSyncing ? "Syncing..." : "Setup Progress")
+                        .font(AppFont.caption)
+                        .foregroundColor(AppColors.tertiaryText)
+                }
 
                 ProgressView(value: progress, total: 1.0)
                     .tint(.accentColor)
 
-                Text(hint)
+                // Show sync status when syncing, otherwise show hint
+                Text(isSyncing && !syncMessage.isEmpty ? syncMessage : hint)
                     .font(AppFont.caption)
-                    .foregroundColor(AppColors.secondaryText)
+                    .foregroundColor(isSyncing ? .accentColor : AppColors.secondaryText)
+                    .animation(.easeInOut(duration: 0.2), value: syncMessage)
             }
             .padding(.vertical, Spacing.xs)
         }
@@ -1066,10 +1082,14 @@ struct EmptyConversationListView: View {
                 providerName: "ChatGPT"
             )
         case .claudeCode, .codex, .gemini, .opencode, .geminiCLI, .copilot, .cursor:
-            // CLI providers - always show no data state
+            // CLI providers - show sync button
             UnifiedEmptyState.noData(
                 title: "No \(provider.displayName) conversations",
-                subtitle: "Your \(provider.displayName) conversations will appear here after syncing"
+                subtitle: "Your \(provider.displayName) conversations will appear here after syncing",
+                actionLabel: "Sync Now",
+                action: {
+                    Task { await appState.syncAll(localProviders: [provider]) }
+                }
             )
         }
     }

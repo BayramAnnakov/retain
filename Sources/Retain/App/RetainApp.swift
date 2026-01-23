@@ -1,4 +1,5 @@
 import SwiftUI
+import Sparkle
 
 /// App delegate to handle window management
 class AppDelegate: NSObject, NSApplicationDelegate {
@@ -119,6 +120,11 @@ struct RetainApp: App {
                     }
                 }
                 .keyboardShortcut("r", modifiers: [.command, .option])
+            }
+
+            // Check for Updates in the App menu
+            CommandGroup(after: .appInfo) {
+                CheckForUpdatesView(updater: UpdateController.shared.updater)
             }
 
             CommandMenu("Search") {

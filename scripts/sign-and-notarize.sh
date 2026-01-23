@@ -75,6 +75,35 @@ echo ""
 echo "=== Creating notarized DMG ==="
 rm -f "$DIST_DIR/$APP_NAME-$VERSION.dmg"
 
+# Create staging directory with app and Applications symlink
+STAGING_DIR="$DIST_DIR/dmg_staging"
+rm -rf "$STAGING_DIR"
+mkdir -p "$STAGING_DIR"
+cp -R "$DIST_DIR/$APP_NAME.app" "$STAGING_DIR/"
+ln -sf /Applications "$STAGING_DIR/Applications"
+
+# Function to create DMG using sparse image (workaround for permission issues)
+create_dmg_sparse() {
+    local output_dmg="$1"
+    local staging="$2"
+    local volname="$3"
+
+    local sparse_img="/tmp/retain_sparse_$$.sparseimage"
+    local mount_point="/tmp/retain_mount_$$"
+
+    rm -f "$sparse_img" 2>/dev/null
+    rm -rf "$mount_point" 2>/dev/null
+
+    hdiutil create -size 100m -fs HFS+ -volname "$volname" -type SPARSE "$sparse_img" && \
+    hdiutil attach "$sparse_img" -mountpoint "$mount_point" && \
+    cp -R "$staging"/* "$mount_point/" && \
+    hdiutil detach "$mount_point" && \
+    hdiutil convert "$sparse_img" -format UDZO -o "$output_dmg" -ov && \
+    rm -f "$sparse_img"
+}
+
+DMG_CREATED=false
+
 if command -v create-dmg &> /dev/null; then
     ICON_PATH="$DIST_DIR/$APP_NAME.app/Contents/Resources/AppIcon.icns"
     ICON_ARGS=""
@@ -82,7 +111,8 @@ if command -v create-dmg &> /dev/null; then
         ICON_ARGS="--volicon $ICON_PATH"
     fi
 
-    create-dmg \
+    # Try create-dmg first (produces nicer DMG with window layout)
+    if create-dmg \
         --volname "$APP_NAME" \
         $ICON_ARGS \
         --window-pos 200 120 \
@@ -93,15 +123,38 @@ if command -v create-dmg &> /dev/null; then
         --app-drop-link 450 185 \
         --no-internet-enable \
         "$DIST_DIR/$APP_NAME-$VERSION.dmg" \
-        "$DIST_DIR/$APP_NAME.app"
-else
-    echo "Warning: create-dmg not found, using hdiutil (no Applications link)"
-    echo "Install with: brew install create-dmg"
-    hdiutil create -volname "$APP_NAME" \
-        -srcfolder "$DIST_DIR/$APP_NAME.app" \
-        -ov -format UDZO \
-        "$DIST_DIR/$APP_NAME-$VERSION.dmg"
+        "$STAGING_DIR" 2>/dev/null; then
+        echo "DMG created with create-dmg"
+        DMG_CREATED=true
+    fi
 fi
+
+# Fallback to hdiutil direct method
+if [ "$DMG_CREATED" = false ]; then
+    echo "Trying hdiutil direct method..."
+    if hdiutil create -volname "$APP_NAME" \
+        -srcfolder "$STAGING_DIR" \
+        -ov -format UDZO \
+        "$DIST_DIR/$APP_NAME-$VERSION.dmg" 2>/dev/null; then
+        echo "DMG created with hdiutil"
+        DMG_CREATED=true
+    fi
+fi
+
+# Final fallback to sparse image method (works around permission issues)
+if [ "$DMG_CREATED" = false ]; then
+    echo "Using sparse image method (permission workaround)..."
+    if create_dmg_sparse "$DIST_DIR/$APP_NAME-$VERSION.dmg" "$STAGING_DIR" "$APP_NAME"; then
+        echo "DMG created with sparse image method"
+        DMG_CREATED=true
+    else
+        echo "ERROR: All DMG creation methods failed"
+        exit 1
+    fi
+fi
+
+# Cleanup staging
+rm -rf "$STAGING_DIR"
 
 # Recreate zip with notarized app
 echo ""
