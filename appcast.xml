@@ -6,20 +6,20 @@
         <description>Updates for Retain</description>
         <language>en</language>
         <item>
-            <title>Version 0.1.2-beta</title>
+            <title>Version 0.1.3-beta</title>
             <description><![CDATA[
-                <h2>What's New in 0.1.2-beta</h2>
-                <p>Auto-update support with Sparkle framework</p>
+                <h2>What's New in 0.1.3-beta</h2>
+                <p>Auto-updates via Sparkle framework</p>
             ]]></description>
-            <pubDate>Fri, 23 Jan 2026 03:39:46 -0800</pubDate>
-            <sparkle:version>0.1.2-beta</sparkle:version>
-            <sparkle:shortVersionString>0.1.2-beta</sparkle:shortVersionString>
+            <pubDate>Fri, 23 Jan 2026 04:19:59 -0800</pubDate>
+            <sparkle:version>0.1.3-beta</sparkle:version>
+            <sparkle:shortVersionString>0.1.3-beta</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <enclosure
-                url="https://github.com/BayramAnnakov/retain/releases/download/v0.1.2-beta/Retain-0.1.2-beta.dmg"
-                length="5434803"
+                url="https://github.com/BayramAnnakov/retain/releases/download/v0.1.3-beta/Retain-0.1.3-beta.dmg"
+                length="6419218"
                 type="application/octet-stream"
-                sparkle:edSignature="5434803"
+                sparkle:edSignature="BOskkeTkhzBwdef2VdTHheQPQPHlAyM9EXSbx1Dx/yx+Nr48lDssAoFk/pvtsTWXU8ogX3qJ69Li/gGh084BAQ=="
             />
         </item>
     </channel>
