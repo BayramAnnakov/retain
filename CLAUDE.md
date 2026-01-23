@@ -277,6 +277,8 @@ The app uses [Sparkle](https://sparkle-project.org/) for automatic updates:
 
 **Bootstrap version**: v0.1.3-beta is the first release with Sparkle. Users on older versions must manually update once; future updates will auto-notify.
 
+**CFBundleVersion must match**: Sparkle compares `sparkle:version` from appcast against `CFBundleVersion` in Info.plist. Both must use the same format (e.g., "0.1.5-beta"). If CFBundleVersion is "1" while appcast has "0.1.5-beta", Sparkle will say "up to date" instead of offering the update.
+
 ### Key Points
 
 - **Xcode 15.4+ required**: `nonisolated(unsafe)` syntax requires Swift 5.10; CI workflows must use Xcode 15.4+
