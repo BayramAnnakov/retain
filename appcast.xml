@@ -6,20 +6,20 @@
         <description>Updates for Retain</description>
         <language>en</language>
         <item>
-            <title>Version 0.1.7-beta</title>
+            <title>Version 0.1.8-beta</title>
             <description><![CDATA[
-                <h2>What's New in 0.1.7-beta</h2>
-                <p>Spotlight deep linking fix</p>
+                <h2>What's New in 0.1.8-beta</h2>
+                <p>Fix symlink handling for ~/.claude/projects</p>
             ]]></description>
-            <pubDate>Sat, 24 Jan 2026 08:42:29 -0800</pubDate>
-            <sparkle:version>4</sparkle:version>
-            <sparkle:shortVersionString>0.1.7-beta</sparkle:shortVersionString>
+            <pubDate>Sat, 24 Jan 2026 08:53:04 -0800</pubDate>
+            <sparkle:version>5</sparkle:version>
+            <sparkle:shortVersionString>0.1.8-beta</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <enclosure
-                url="https://github.com/BayramAnnakov/retain/releases/download/v0.1.7-beta/Retain-0.1.7-beta.dmg"
-                length="6335094"
+                url="https://github.com/BayramAnnakov/retain/releases/download/v0.1.8-beta/Retain-0.1.8-beta.dmg"
+                length="6335729"
                 type="application/octet-stream"
-                sparkle:edSignature="UyJsiFgZ19aVdtfiP+TY7tgrB8ThTV5mAF6CIb2qNcA/bjNcPSyq3qf+e4dbQQSI0WgKxDUnw5KmObA82AxLAg=="
+                sparkle:edSignature="3MFaXjmGzSoOnIbjGGrPtoQRytxN2pXdUXkAUXrTXdl69k9+QusnOfVGA3rMifjkJKaiAneiknb0iPuS0e8+AQ=="
             />
         </item>
     </channel>

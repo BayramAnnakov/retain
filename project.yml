@@ -8,8 +8,8 @@ options:
 
 settings:
   base:
-    MARKETING_VERSION: "0.1.7-beta"
-    CURRENT_PROJECT_VERSION: "4"
+    MARKETING_VERSION: "0.1.8-beta"
+    CURRENT_PROJECT_VERSION: "5"
     SWIFT_VERSION: "5.10"
     MACOSX_DEPLOYMENT_TARGET: "14.0"
 
