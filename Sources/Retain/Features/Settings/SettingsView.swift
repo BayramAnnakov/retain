@@ -1423,6 +1423,30 @@ struct DiagnosticsSettingsView: View {
                 .disabled(syncLogs.isEmpty)
             }
 
+            Section("Spotlight Integration") {
+                Toggle("Index conversations in Spotlight", isOn: Binding(
+                    get: { appState.spotlightIndexingEnabled },
+                    set: { appState.spotlightIndexingEnabled = $0 }
+                ))
+                .help("Allow searching Retain conversations from system Spotlight")
+
+                HStack {
+                    Button("Reindex Spotlight") {
+                        Task {
+                            await appState.reindexSpotlight()
+                        }
+                    }
+                    .disabled(!appState.spotlightIndexingEnabled)
+
+                    Button("Clear Index", role: .destructive) {
+                        Task {
+                            await appState.clearSpotlightIndex()
+                        }
+                    }
+                    .disabled(!appState.spotlightIndexingEnabled)
+                }
+            }
+
             Section("Debug Actions") {
                 Button("Export Diagnostic Report") {
                     exportDiagnosticReport()

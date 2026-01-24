@@ -6,20 +6,20 @@
         <description>Updates for Retain</description>
         <language>en</language>
         <item>
-            <title>Version 0.1.6-beta</title>
+            <title>Version 0.1.7-beta</title>
             <description><![CDATA[
-                <h2>What's New in 0.1.6-beta</h2>
-                <p>Fix Sparkle auto-update (proper XPC service signing)</p>
+                <h2>What's New in 0.1.7-beta</h2>
+                <p>macOS native integration with Spotlight search</p>
             ]]></description>
-            <pubDate>Fri, 23 Jan 2026 10:04:25 -0800</pubDate>
-            <sparkle:version>3</sparkle:version>
-            <sparkle:shortVersionString>0.1.6-beta</sparkle:shortVersionString>
+            <pubDate>Sat, 24 Jan 2026 08:15:39 -0800</pubDate>
+            <sparkle:version>4</sparkle:version>
+            <sparkle:shortVersionString>0.1.7-beta</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <enclosure
-                url="https://github.com/BayramAnnakov/retain/releases/download/v0.1.6-beta/Retain-0.1.6-beta.dmg"
-                length="6506409"
+                url="https://github.com/BayramAnnakov/retain/releases/download/v0.1.7-beta/Retain-0.1.7-beta.dmg"
+                length="6332361"
                 type="application/octet-stream"
-                sparkle:edSignature="U/MCbWpNBAiehDIgWAhsGrHh1jAiOG+0kc7pgQbEMTheWT/6JD+PnPNvxozaI2QmWKOx/sEq+60RnvMFrXtsDw=="
+                sparkle:edSignature="DBgmS2vghXvVvKrDzTj/QdT7lpijjGxvlsKD23NReHwuilELDBMUpbq4SKDi/oWiEDQFe2kfwP2GtZA83gBzCQ=="
             />
         </item>
     </channel>

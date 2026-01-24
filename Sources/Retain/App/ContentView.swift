@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreSpotlight
 
 /// Main content view with three-column navigation
 struct ContentView: View {
@@ -142,6 +143,19 @@ struct ContentView: View {
                 .animation(.spring(response: 0.4, dampingFraction: 0.8), value: appState.showSyncErrorBanner)
             }
         }
+        // Handle Spotlight search result taps
+        .onContinueUserActivity(CSSearchableItemActionType) { activity in
+            handleSpotlightActivity(activity)
+        }
+    }
+
+    /// Handle Spotlight search result selection
+    private func handleSpotlightActivity(_ activity: NSUserActivity) {
+        guard let identifier = activity.userInfo?[CSSearchableItemActivityIdentifier] as? String,
+              let uuid = UUID(uuidString: identifier) else {
+            return
+        }
+        appState.navigateToConversation(id: uuid)
     }
 }
 

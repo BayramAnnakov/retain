@@ -48,6 +48,14 @@ Sources/Retain/
 │   ├── MenuBar/
 │   ├── Settings/
 │   └── Onboarding/
+├── Integrations/           # macOS native integrations
+│   ├── SpotlightIndexer.swift  # Core Spotlight indexing
+│   └── URLSchemeHandler.swift  # retain:// deep linking
+├── Intents/                # App Intents for Shortcuts/Siri
+│   ├── ConversationEntity.swift
+│   ├── ConversationQuery.swift
+│   ├── RetainIntents.swift
+│   └── ShortcutsProvider.swift
 └── Services/
     ├── FileWatcher.swift   # FSEvents for file changes
     ├── SyncService.swift   # Background sync (actor)
@@ -105,6 +113,50 @@ struct Learning {
     var scope: LearningScope    // .global, .project
 }
 ```
+
+## macOS Native Integration
+
+### Spotlight Integration
+Conversations are indexed in system Spotlight for universal search.
+- **SpotlightIndexer** (`Integrations/SpotlightIndexer.swift`): Actor that manages Core Spotlight indexing
+- Automatically indexes conversations after sync
+- Toggle in Settings → Diagnostics → Spotlight Integration
+- Test with: `mdfind "kMDItemContentType == 'com.retain.conversations'"`
+
+### URL Scheme (Deep Linking)
+Retain supports `retain://` URLs for deep linking:
+
+| URL | Action |
+|-----|--------|
+| `retain://conversation/{uuid}` | Open specific conversation |
+| `retain://search?q={query}` | Search with query |
+| `retain://learnings` | Open learnings view |
+| `retain://sync` | Trigger sync |
+
+Test with: `open "retain://search?q=async"`
+
+### Dock Menu
+Right-click the Dock icon to access:
+- Sync Now
+- Review Learnings (with pending count)
+- Recent conversations submenu
+
+### App Intents (Shortcuts/Siri)
+Exposes app functionality to Shortcuts app and Siri:
+
+| Intent | Description |
+|--------|-------------|
+| `SearchConversationsIntent` | Search conversations by query |
+| `SyncConversationsIntent` | Trigger sync |
+| `OpenConversationIntent` | Open a specific conversation |
+| `OpenLearningsIntent` | Open learnings view |
+| `GetRecentConversationsIntent` | Get list of recent conversations |
+| `GetPendingLearningsCountIntent` | Get pending learnings count |
+
+Phrases registered in `ShortcutsProvider.swift`:
+- "Search Retain for [query]"
+- "Sync Retain"
+- "Open Retain learnings"
 
 ## Build & Run
 

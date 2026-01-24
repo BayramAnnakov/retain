@@ -5,6 +5,10 @@ import ServiceManagement
 /// Global application state
 @MainActor
 final class AppState: ObservableObject {
+    /// Shared instance for access from AppDelegate and other contexts
+    /// Set when the app initializes in RetainApp.swift
+    nonisolated(unsafe) static var shared: AppState?
+
     // MARK: - Settings
 
     @AppStorage("autoExtractLearnings") var autoExtractLearnings: Bool = true
@@ -26,6 +30,7 @@ final class AppState: ObservableObject {
     @AppStorage("cursorEnabled") var cursorEnabled: Bool = false
     @AppStorage("geminiWorkflowEnabled") var geminiWorkflowEnabled: Bool = false
     @AppStorage("geminiWorkflowModel") var geminiWorkflowModel: String = "gemini-3-flash-preview"
+    @AppStorage("spotlightIndexingEnabled") var spotlightIndexingEnabled: Bool = true
 
     /// Gemini API key (stored in Keychain for security)
     @Published private(set) var geminiApiKey: String = ""
@@ -527,6 +532,13 @@ final class AppState: ObservableObject {
             if semanticSearchEnabled && !stats.updatedConversationIds.isEmpty {
                 Task {
                     try? await semanticSearch.indexConversations(ids: stats.updatedConversationIds)
+                }
+            }
+
+            // Index updated conversations in Spotlight
+            if spotlightIndexingEnabled && !stats.updatedConversationIds.isEmpty {
+                Task {
+                    await indexSpotlightAfterSync(updatedConversationIds: stats.updatedConversationIds)
                 }
             }
         case .failed(let error):
@@ -1429,6 +1441,111 @@ final class AppState: ObservableObject {
     func clearSelection() {
         selectedConversation = nil
         selectedMessages = []
+    }
+
+    // MARK: - Deep Linking
+
+    /// Navigate to a conversation by ID (for Spotlight, URL scheme, etc.)
+    /// Returns true if the conversation was found and selected
+    @discardableResult
+    func navigateToConversation(id: UUID) -> Bool {
+        activeView = .conversationList
+        sidebarSelection = nil
+        clearFilter()
+
+        if let existing = conversations.first(where: { $0.id == id }) {
+            select(existing)
+            return true
+        }
+
+        // Try to fetch from database if not in memory
+        let targetId = id
+        Task { [repository] in
+            guard let convo = try? await Task.detached(priority: nil, operation: {
+                try repository.fetch(id: targetId)
+            }).value else { return }
+            select(convo)
+        }
+        return false
+    }
+
+    /// Trigger a sync from external action (URL scheme, Dock menu, etc.)
+    func triggerSync() {
+        Task {
+            await syncAll()
+        }
+    }
+
+    /// Navigate to learnings view
+    func navigateToLearnings() {
+        activeView = .learnings
+        sidebarSelection = .learnings
+        clearFilter()
+        clearSelection()
+    }
+
+    // MARK: - Spotlight Integration
+
+    /// Reindex all conversations in Spotlight
+    func reindexSpotlight() async {
+        guard spotlightIndexingEnabled else { return }
+
+        // Fetch all conversations with messages
+        let data = await Task.detached { [repository] in
+            let conversations = (try? repository.fetchAll()) ?? []
+            return conversations.compactMap { conversation -> (Conversation, [Message])? in
+                guard let messages = try? repository.fetchMessages(conversationId: conversation.id) else {
+                    return nil
+                }
+                return (conversation, messages)
+            }
+        }.value
+
+        do {
+            try await SpotlightIndexer.shared.reindexAll(conversations: data)
+        } catch {
+            #if DEBUG
+            print("Failed to reindex Spotlight: \(error)")
+            #endif
+        }
+    }
+
+    /// Clear Spotlight index
+    func clearSpotlightIndex() async {
+        do {
+            try await SpotlightIndexer.shared.clearIndex()
+        } catch {
+            #if DEBUG
+            print("Failed to clear Spotlight index: \(error)")
+            #endif
+        }
+    }
+
+    /// Index updated conversations in Spotlight after sync
+    private func indexSpotlightAfterSync(updatedConversationIds: Set<UUID>) async {
+        guard spotlightIndexingEnabled else { return }
+        guard !updatedConversationIds.isEmpty else { return }
+
+        // Fetch updated conversations with their messages
+        let data = await Task.detached { [repository] in
+            updatedConversationIds.compactMap { id -> (Conversation, [Message])? in
+                guard let conversation = try? repository.fetch(id: id),
+                      let messages = try? repository.fetchMessages(conversationId: id) else {
+                    return nil
+                }
+                return (conversation, messages)
+            }
+        }.value
+
+        for (conversation, messages) in data {
+            do {
+                try await SpotlightIndexer.shared.indexConversation(conversation, messages: messages)
+            } catch {
+                #if DEBUG
+                print("Failed to index conversation \(conversation.id) in Spotlight: \(error)")
+                #endif
+            }
+        }
     }
 
     // MARK: - Starring

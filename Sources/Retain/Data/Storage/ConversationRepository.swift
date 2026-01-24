@@ -189,6 +189,17 @@ final class ConversationRepository: @unchecked Sendable {
         }
     }
 
+    /// Fetch recent conversations (for App Intents suggestions)
+    func fetchRecent(limit: Int = 10) throws -> [Conversation] {
+        try database.read { db in
+            try Conversation
+                .filter(Conversation.Columns.deletedAt == nil)
+                .order(Conversation.Columns.updatedAt.desc)
+                .limit(limit)
+                .fetchAll(db)
+        }
+    }
+
     // MARK: - Search
 
     /// Full-text search across all messages

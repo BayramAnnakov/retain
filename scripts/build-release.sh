@@ -1,16 +1,21 @@
 #!/bin/bash
 set -e
 
-# Build script for Retain release
+# Build script for Retain release using Xcode
 # Creates an unsigned .app bundle ready for distribution
+#
+# Usage: ./scripts/build-release.sh [version] [build-number]
+# Example: ./scripts/build-release.sh 0.1.7-beta 4
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-BUILD_DIR="$PROJECT_DIR/.build/release"
 DIST_DIR="$PROJECT_DIR/dist"
+BUILD_DIR="$PROJECT_DIR/.build/xcode-release"
 APP_NAME="Retain"
-VERSION="0.1.6-beta"
-BUILD_NUMBER="3"  # Increment for each release. Used by Sparkle for version comparison.
+
+# Parse arguments or use defaults
+VERSION="${1:-0.1.7-beta}"
+BUILD_NUMBER="${2:-4}"
 
 echo "=== Building $APP_NAME $VERSION (build $BUILD_NUMBER) ==="
 
@@ -18,116 +23,83 @@ echo "=== Building $APP_NAME $VERSION (build $BUILD_NUMBER) ==="
 rm -rf "$DIST_DIR"
 mkdir -p "$DIST_DIR"
 
-# Build release binary
-echo "Building release binary..."
 cd "$PROJECT_DIR"
-swift build -c release
 
-# Create app bundle structure
-APP_BUNDLE="$DIST_DIR/$APP_NAME.app"
-mkdir -p "$APP_BUNDLE/Contents/MacOS"
-mkdir -p "$APP_BUNDLE/Contents/Resources"
+# Update version in project.yml
+echo "Updating version in project.yml..."
+sed -i '' "s/MARKETING_VERSION:.*/MARKETING_VERSION: \"$VERSION\"/" project.yml
+sed -i '' "s/CURRENT_PROJECT_VERSION:.*/CURRENT_PROJECT_VERSION: \"$BUILD_NUMBER\"/" project.yml
 
-# Copy executable
-echo "Creating app bundle..."
-cp "$BUILD_DIR/$APP_NAME" "$APP_BUNDLE/Contents/MacOS/"
-
-# Copy Sparkle framework
-echo "Copying Sparkle framework..."
-SPARKLE_FRAMEWORK="$PROJECT_DIR/.build/artifacts/sparkle/Sparkle/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework"
-if [ -d "$SPARKLE_FRAMEWORK" ]; then
-    mkdir -p "$APP_BUNDLE/Contents/Frameworks"
-    cp -R "$SPARKLE_FRAMEWORK" "$APP_BUNDLE/Contents/Frameworks/"
-
-    # Add rpath to find the framework at runtime
-    install_name_tool -add_rpath "@executable_path/../Frameworks" "$APP_BUNDLE/Contents/MacOS/$APP_NAME" 2>/dev/null || true
-    echo "Sparkle framework copied and rpath set"
-else
-    echo "Warning: Sparkle framework not found at $SPARKLE_FRAMEWORK"
-    echo "Run: swift package resolve"
+# Check for xcodegen
+if ! command -v xcodegen &> /dev/null; then
+    echo "Error: xcodegen not found. Install with: brew install xcodegen"
+    exit 1
 fi
 
-# Generate app icon (skip in CI - requires GUI context)
-# GitHub Actions sets CI=true and GITHUB_ACTIONS=true
-if [ "$CI" = "true" ] || [ "$GITHUB_ACTIONS" = "true" ]; then
-    echo "Skipping icon generation in CI (requires GUI context)"
-else
-    echo "Generating app icon..."
-    chmod +x "$SCRIPT_DIR/generate-icon.swift"
-    swift "$SCRIPT_DIR/generate-icon.swift" "$DIST_DIR"
+# Regenerate Xcode project
+echo "Regenerating Xcode project..."
+xcodegen generate
 
-    # Convert iconset to icns
-    if [ -d "$DIST_DIR/AppIcon.iconset" ]; then
-        iconutil -c icns "$DIST_DIR/AppIcon.iconset" -o "$APP_BUNDLE/Contents/Resources/AppIcon.icns"
-        rm -rf "$DIST_DIR/AppIcon.iconset"
-        echo "App icon created: AppIcon.icns"
-    fi
+# Build with xcodebuild
+echo "Building with xcodebuild..."
+xcodebuild -project Retain.xcodeproj \
+    -scheme Retain \
+    -configuration Release \
+    -derivedDataPath "$BUILD_DIR" \
+    build
+
+# Copy app to dist
+APP_PATH="$BUILD_DIR/Build/Products/Release/$APP_NAME.app"
+if [ ! -d "$APP_PATH" ]; then
+    echo "Error: App not found at $APP_PATH"
+    exit 1
 fi
 
-# Create Info.plist
-cat > "$APP_BUNDLE/Contents/Info.plist" << EOF
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>CFBundleDevelopmentRegion</key>
-    <string>en</string>
-    <key>CFBundleExecutable</key>
-    <string>$APP_NAME</string>
-    <key>CFBundleIdentifier</key>
-    <string>com.empatika.Retain</string>
-    <key>CFBundleInfoDictionaryVersion</key>
-    <string>6.0</string>
-    <key>CFBundleName</key>
-    <string>$APP_NAME</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-    <key>CFBundleIconFile</key>
-    <string>AppIcon</string>
-    <key>CFBundleShortVersionString</key>
-    <string>$VERSION</string>
-    <key>CFBundleVersion</key>
-    <string>$BUILD_NUMBER</string>
-    <key>LSMinimumSystemVersion</key>
-    <string>14.0</string>
-    <key>LSApplicationCategoryType</key>
-    <string>public.app-category.developer-tools</string>
-    <key>NSHighResolutionCapable</key>
-    <true/>
-    <key>NSSupportsAutomaticTermination</key>
-    <true/>
-    <key>NSSupportsSuddenTermination</key>
-    <true/>
-    <key>LSUIElement</key>
-    <false/>
-    <!-- Sparkle Auto-Update Configuration -->
-    <key>SUFeedURL</key>
-    <string>https://raw.githubusercontent.com/BayramAnnakov/retain/main/appcast.xml</string>
-    <key>SUPublicEDKey</key>
-    <string>0oUDQBQMD7S9b04m7u/UmG6ee9KX9IfgtVCbOsgMK+M=</string>
-    <key>SUEnableAutomaticChecks</key>
-    <true/>
-    <key>SUAllowsAutomaticUpdates</key>
-    <true/>
-</dict>
-</plist>
-EOF
+echo "Copying app to dist..."
+cp -R "$APP_PATH" "$DIST_DIR/"
 
-# Create PkgInfo
-echo -n "APPL????" > "$APP_BUNDLE/Contents/PkgInfo"
+# Verify the build
+echo ""
+echo "=== Verifying Build ==="
+
+# Check App Intents metadata
+if [ -d "$DIST_DIR/$APP_NAME.app/Contents/Resources/Metadata.appintents" ]; then
+    echo "✓ App Intents metadata present"
+else
+    echo "✗ App Intents metadata missing"
+fi
+
+# Check Sparkle framework
+if [ -d "$DIST_DIR/$APP_NAME.app/Contents/Frameworks/Sparkle.framework" ]; then
+    echo "✓ Sparkle framework present"
+else
+    echo "✗ Sparkle framework missing"
+fi
+
+# Check App Icon
+if [ -f "$DIST_DIR/$APP_NAME.app/Contents/Resources/AppIcon.icns" ]; then
+    echo "✓ App icon present"
+else
+    echo "✗ App icon missing (checking for Resources folder...)"
+    ls -la "$DIST_DIR/$APP_NAME.app/Contents/Resources/" 2>/dev/null || true
+fi
+
+# Check version in Info.plist
+BUILT_VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "$DIST_DIR/$APP_NAME.app/Contents/Info.plist" 2>/dev/null || echo "unknown")
+BUILT_BUILD=$(/usr/libexec/PlistBuddy -c "Print CFBundleVersion" "$DIST_DIR/$APP_NAME.app/Contents/Info.plist" 2>/dev/null || echo "unknown")
+echo "✓ Version: $BUILT_VERSION (build $BUILT_BUILD)"
 
 # Create zip for distribution
+echo ""
 echo "Creating distribution zip..."
 cd "$DIST_DIR"
 zip -r "$APP_NAME-$VERSION.zip" "$APP_NAME.app"
 
 echo ""
 echo "=== Build Complete ==="
-echo "App bundle: $APP_BUNDLE"
+echo "App bundle: $DIST_DIR/$APP_NAME.app"
 echo "Distribution: $DIST_DIR/$APP_NAME-$VERSION.zip"
 echo ""
-echo "To test locally:"
-echo "  open $APP_BUNDLE"
-echo ""
-echo "For users to bypass Gatekeeper:"
-echo "  xattr -cr $APP_BUNDLE"
+echo "Next steps:"
+echo "  1. Test locally: open $DIST_DIR/$APP_NAME.app"
+echo "  2. Sign and notarize: ./scripts/sign-and-notarize.sh $VERSION"

@@ -19,6 +19,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 window.makeKeyAndOrderFront(nil)
             }
         }
+
+        // Register App Shortcuts with the system
+        RetainShortcuts.updateShortcuts()
     }
 
     private func setDockIcon() {
@@ -77,12 +80,145 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // 3. WebSyncEngine tasks are process-bound
         // The OS kills all threads when the process exits.
     }
+
+    // MARK: - URL Scheme Handling (prevents multiple windows)
+
+    func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls {
+            handleRetainURL(url)
+        }
+    }
+
+    private func handleRetainURL(_ url: URL) {
+        guard let route = URLSchemeHandler.parse(url) else {
+            #if DEBUG
+            print("Invalid URL scheme: \(url)")
+            #endif
+            return
+        }
+
+        // Activate and focus existing window
+        NSApplication.shared.activate(ignoringOtherApps: true)
+        if let window = NSApplication.shared.windows.first(where: { $0.canBecomeMain }) {
+            window.makeKeyAndOrderFront(nil)
+        }
+
+        // Handle the route
+        Task { @MainActor in
+            guard let appState = AppState.shared else { return }
+
+            switch route {
+            case .conversation(let id):
+                appState.navigateToConversation(id: id)
+
+            case .search(let query):
+                appState.activeView = .conversationList
+                appState.sidebarSelection = nil
+                appState.clearFilter()
+                appState.searchQuery = query
+                appState.focusSearch()
+
+            case .learnings:
+                appState.navigateToLearnings()
+
+            case .sync:
+                appState.triggerSync()
+            }
+        }
+    }
+
+    // MARK: - Dock Menu
+
+    func applicationDockMenu(_ sender: NSApplication) -> NSMenu? {
+        let menu = NSMenu()
+
+        // Sync Now
+        let syncItem = NSMenuItem(
+            title: "Sync Now",
+            action: #selector(syncNow),
+            keyEquivalent: ""
+        )
+        syncItem.target = self
+        menu.addItem(syncItem)
+
+        // Review Learnings
+        let pendingCount = MainActor.assumeIsolated { AppState.shared?.pendingLearningsCount ?? 0 }
+        let learningsTitle = pendingCount > 0 ? "Review Learnings (\(pendingCount))" : "Review Learnings"
+        let learningsItem = NSMenuItem(
+            title: learningsTitle,
+            action: #selector(openLearnings),
+            keyEquivalent: ""
+        )
+        learningsItem.target = self
+        menu.addItem(learningsItem)
+
+        menu.addItem(NSMenuItem.separator())
+
+        // Recent conversations submenu
+        let recentItem = NSMenuItem(title: "Recent", action: nil, keyEquivalent: "")
+        let recentMenu = NSMenu()
+
+        let recentConversations = MainActor.assumeIsolated {
+            AppState.shared?.conversations.prefix(5) ?? []
+        }
+
+        for conversation in recentConversations {
+            let item = NSMenuItem(
+                title: conversation.displayTitle,
+                action: #selector(openConversation(_:)),
+                keyEquivalent: ""
+            )
+            item.target = self
+            item.representedObject = conversation.id
+            recentMenu.addItem(item)
+        }
+
+        if recentMenu.items.isEmpty {
+            let emptyItem = NSMenuItem(title: "No recent conversations", action: nil, keyEquivalent: "")
+            emptyItem.isEnabled = false
+            recentMenu.addItem(emptyItem)
+        }
+
+        recentItem.submenu = recentMenu
+        menu.addItem(recentItem)
+
+        return menu
+    }
+
+    @objc private func syncNow() {
+        Task { @MainActor in
+            AppState.shared?.triggerSync()
+        }
+    }
+
+    @objc private func openLearnings() {
+        Task { @MainActor in
+            AppState.shared?.navigateToLearnings()
+            // Bring app to front
+            NSApplication.shared.activate(ignoringOtherApps: true)
+            if let window = NSApplication.shared.windows.first(where: { $0.canBecomeMain }) {
+                window.makeKeyAndOrderFront(nil)
+            }
+        }
+    }
+
+    @objc private func openConversation(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? UUID else { return }
+        Task { @MainActor in
+            AppState.shared?.navigateToConversation(id: id)
+            // Bring app to front
+            NSApplication.shared.activate(ignoringOtherApps: true)
+            if let window = NSApplication.shared.windows.first(where: { $0.canBecomeMain }) {
+                window.makeKeyAndOrderFront(nil)
+            }
+        }
+    }
 }
 
 @main
 struct RetainApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    @StateObject private var appState = AppState()
+    @StateObject private var appState: AppState
     @Environment(\.openWindow) private var openWindow
     @AppStorage("showMenuBarIcon") private var showMenuBarIcon = true
 
@@ -96,10 +232,16 @@ struct RetainApp: App {
         if ExtractionAuditRunner.runIfRequested() {
             exit(0)
         }
+
+        // Initialize AppState and set shared instance for AppDelegate access
+        let state = AppState()
+        _appState = StateObject(wrappedValue: state)
+        AppState.shared = state
     }
 
     var body: some Scene {
-        WindowGroup(id: "main") {
+        // Single window app - URL handling is done in AppDelegate
+        Window("Retain", id: "main") {
             ContentView()
                 .environmentObject(appState)
         }
