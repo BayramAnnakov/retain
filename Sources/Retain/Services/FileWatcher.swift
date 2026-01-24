@@ -107,7 +107,8 @@ final class FileWatcher: ObservableObject {
 
     /// Watch Claude Code projects directory
     func watchClaudeCode(onChange: @escaping ChangeHandler) {
-        let dir = ClaudeCodeParser.projectsDirectory
+        // Use resolved path to handle symlinked directories
+        let dir = ClaudeCodeParser.resolvedProjectsDirectory
         watch(directory: dir, extensions: ["jsonl"], onChange: onChange)
     }
 

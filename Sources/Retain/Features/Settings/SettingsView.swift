@@ -1475,18 +1475,24 @@ struct DiagnosticsSettingsView: View {
             let fm = FileManager.default
             let home = fm.homeDirectoryForCurrentUser
 
-            // Claude Code
+            // Claude Code (handle symlinks)
             let claudeCodePath = home.appendingPathComponent(".claude/projects")
-            let claudeCodeExists = fm.fileExists(atPath: claudeCodePath.path)
-            let claudeCodeFiles = claudeCodeExists ? (try? fm.contentsOfDirectory(atPath: claudeCodePath.path))?.count ?? 0 : 0
+            let claudeCodeResolved = claudeCodePath.resolvingSymlinksInPath()
+            let isSymlink = claudeCodePath.path != claudeCodeResolved.path
+            let claudeCodeExists = fm.fileExists(atPath: claudeCodeResolved.path)
+            let claudeCodeFiles = claudeCodeExists ? (try? fm.contentsOfDirectory(atPath: claudeCodeResolved.path))?.count ?? 0 : 0
+            var claudeCodePaths = [ProviderDiagnostic.PathInfo(path: claudeCodePath.path + (isSymlink ? " (symlink)" : ""), exists: claudeCodeExists, fileCount: claudeCodeFiles)]
+            if isSymlink {
+                claudeCodePaths.append(ProviderDiagnostic.PathInfo(path: "→ \(claudeCodeResolved.path)", exists: claudeCodeExists, fileCount: 0))
+            }
             results.append(ProviderDiagnostic(
                 provider: .claudeCode,
                 name: "Claude Code",
                 isEnabled: UserDefaults.standard.bool(forKey: "claudeCodeEnabled"),
-                paths: [ProviderDiagnostic.PathInfo(path: claudeCodePath.path, exists: claudeCodeExists, fileCount: claudeCodeFiles)],
+                paths: claudeCodePaths,
                 conversationCount: appState.providerStats[.claudeCode] ?? 0
             ))
-            syncLogs.append("[\(Date().formatted(date: .omitted, time: .standard))] Checked Claude Code: \(claudeCodePath.path)")
+            syncLogs.append("[\(Date().formatted(date: .omitted, time: .standard))] Checked Claude Code: \(claudeCodeResolved.path)\(isSymlink ? " (symlink)" : "")")
 
             // Codex
             let codexPath = home.appendingPathComponent(".codex")

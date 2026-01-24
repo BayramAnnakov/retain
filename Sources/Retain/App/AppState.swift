@@ -701,9 +701,11 @@ final class AppState: ObservableObject {
         guard event.type == .created || event.type == .modified else { return }
 
         let path = event.url.path
-        guard path.contains(".claude/projects") || path.contains(".codex") else { return }
-        if path.contains(".claude/projects"), !claudeCodeEnabled { return }
-        if path.contains(".codex"), !codexEnabled { return }
+        let isClaudeCode = ClaudeCodeParser.isClaudeCodePath(path)
+        let isCodex = path.contains(".codex")
+        guard isClaudeCode || isCodex else { return }
+        if isClaudeCode, !claudeCodeEnabled { return }
+        if isCodex, !codexEnabled { return }
 
         // Add to pending changes
         pendingFileChanges.insert(event.url)

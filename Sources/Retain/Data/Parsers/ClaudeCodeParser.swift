@@ -6,10 +6,25 @@ final class ClaudeCodeParser: Sendable {
     /// Chunk size for streaming reads (256KB)
     private static let chunkSize = 256 * 1024
 
-    /// Claude Code projects directory
+    /// Claude Code projects directory (may be a symlink)
     static var projectsDirectory: URL {
         FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".claude/projects")
+    }
+
+    /// Claude Code projects directory with symlinks resolved
+    /// Use this for path comparisons when files are enumerated
+    static var resolvedProjectsDirectory: URL {
+        projectsDirectory.resolvingSymlinksInPath()
+    }
+
+    /// Check if a path belongs to the Claude Code projects directory
+    /// Handles both symlinked and non-symlinked paths
+    static func isClaudeCodePath(_ path: String) -> Bool {
+        // Check against both the symlink path and resolved path
+        let symlinkPath = projectsDirectory.path
+        let resolvedPath = resolvedProjectsDirectory.path
+        return path.contains(symlinkPath) || path.contains(resolvedPath)
     }
 
     // MARK: - JSONL Line Structure
@@ -407,7 +422,8 @@ final class ClaudeCodeParser: Sendable {
 
     /// Find all JSONL files in Claude Code projects directory
     func discoverConversationFiles() -> [URL] {
-        let projectsDir = Self.projectsDirectory
+        // Use resolved path to handle symlinked directories
+        let projectsDir = Self.resolvedProjectsDirectory
 
         guard FileManager.default.fileExists(atPath: projectsDir.path) else {
             return []

@@ -493,7 +493,7 @@ actor SyncService {
         let path = url.path
 
         // Determine provider based on path
-        if path.contains(".claude/projects") && url.pathExtension == "jsonl" {
+        if ClaudeCodeParser.isClaudeCodePath(path) && url.pathExtension == "jsonl" {
             // Claude Code file
             do {
                 if let (conversation, messages) = try await parseClaudeCodeFile(url) {
