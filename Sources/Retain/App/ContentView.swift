@@ -683,20 +683,22 @@ struct ConversationListView: View {
                     EmptyConversationListView(hasFilter: appState.activeFilter != nil)
                 }
             } else {
-                List(selection: selectionBinding) {
-                    ForEach(sortedConversations) { conversation in
-                        ConversationListRow(
-                            conversation: conversation,
-                            searchMatchedText: searchResult(for: conversation)?.matchedText
-                        )
-                            .tag(conversation)
-                            .accessibilityIdentifier("ConversationRow_\(conversation.id.uuidString)")
-                            .listRowInsets(EdgeInsets(
-                                top: Spacing.xs,
-                                leading: Spacing.sm,
-                                bottom: Spacing.xs,
-                                trailing: Spacing.sm
-                            ))
+                ScrollViewReader { proxy in
+                    List(selection: selectionBinding) {
+                        ForEach(sortedConversations) { conversation in
+                            ConversationListRow(
+                                conversation: conversation,
+                                searchMatchedText: searchResult(for: conversation)?.matchedText
+                            )
+                                .tag(conversation)
+                                .id(conversation.id)
+                                .accessibilityIdentifier("ConversationRow_\(conversation.id.uuidString)")
+                                .listRowInsets(EdgeInsets(
+                                    top: Spacing.xs,
+                                    leading: Spacing.sm,
+                                    bottom: Spacing.xs,
+                                    trailing: Spacing.sm
+                                ))
                             .contextMenu {
                                 Button {
                                     appState.toggleStar(conversation)
@@ -717,9 +719,17 @@ struct ConversationListView: View {
                                 }
                             }
                     }
+                    }
+                    .listStyle(.plain)
+                    .accessibilityIdentifier("ConversationList")
+                    .onChange(of: appState.selectedConversation) { _, newValue in
+                        if let conversation = newValue {
+                            withAnimation {
+                                proxy.scrollTo(conversation.id, anchor: .center)
+                            }
+                        }
+                    }
                 }
-                .listStyle(.plain)
-                .accessibilityIdentifier("ConversationList")
             }
         }
         .accessibilityIdentifier("ConversationListView")

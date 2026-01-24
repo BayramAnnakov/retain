@@ -1,5 +1,6 @@
 import SwiftUI
 import Sparkle
+import CoreSpotlight
 
 /// App delegate to handle window management
 class AppDelegate: NSObject, NSApplicationDelegate {
@@ -79,6 +80,32 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // 2. FileWatcher uses FSEvents which are cleaned up by the OS
         // 3. WebSyncEngine tasks are process-bound
         // The OS kills all threads when the process exits.
+    }
+
+    // MARK: - Spotlight User Activity Handling
+
+    func application(_ application: NSApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([NSUserActivityRestoring]) -> Void) -> Bool {
+        // Handle Spotlight search result taps
+        if userActivity.activityType == CSSearchableItemActionType {
+            if let identifier = userActivity.userInfo?[CSSearchableItemActivityIdentifier] as? String,
+               let uuid = UUID(uuidString: identifier) {
+                #if DEBUG
+                print("[Spotlight] Opening conversation: \(identifier)")
+                #endif
+
+                // Activate and focus existing window
+                NSApplication.shared.activate(ignoringOtherApps: true)
+                if let window = NSApplication.shared.windows.first(where: { $0.canBecomeMain }) {
+                    window.makeKeyAndOrderFront(nil)
+                }
+
+                Task { @MainActor in
+                    _ = AppState.shared?.navigateToConversation(id: uuid)
+                }
+                return true
+            }
+        }
+        return false
     }
 
     // MARK: - URL Scheme Handling (prevents multiple windows)

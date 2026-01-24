@@ -76,3 +76,5 @@ targets:
         SUPublicEDKey: 0oUDQBQMD7S9b04m7u/UmG6ee9KX9IfgtVCbOsgMK+M=
         SUEnableAutomaticChecks: true
         SUAllowsAutomaticUpdates: true
+        NSUserActivityTypes:
+          - com.apple.corespotlightitem

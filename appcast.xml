@@ -9,17 +9,17 @@
             <title>Version 0.1.7-beta</title>
             <description><![CDATA[
                 <h2>What's New in 0.1.7-beta</h2>
-                <p>macOS native integration with Spotlight search</p>
+                <p>Spotlight deep linking fix</p>
             ]]></description>
-            <pubDate>Sat, 24 Jan 2026 08:15:39 -0800</pubDate>
+            <pubDate>Sat, 24 Jan 2026 08:42:29 -0800</pubDate>
             <sparkle:version>4</sparkle:version>
             <sparkle:shortVersionString>0.1.7-beta</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <enclosure
                 url="https://github.com/BayramAnnakov/retain/releases/download/v0.1.7-beta/Retain-0.1.7-beta.dmg"
-                length="6332361"
+                length="6335094"
                 type="application/octet-stream"
-                sparkle:edSignature="DBgmS2vghXvVvKrDzTj/QdT7lpijjGxvlsKD23NReHwuilELDBMUpbq4SKDi/oWiEDQFe2kfwP2GtZA83gBzCQ=="
+                sparkle:edSignature="UyJsiFgZ19aVdtfiP+TY7tgrB8ThTV5mAF6CIb2qNcA/bjNcPSyq3qf+e4dbQQSI0WgKxDUnw5KmObA82AxLAg=="
             />
         </item>
     </channel>
