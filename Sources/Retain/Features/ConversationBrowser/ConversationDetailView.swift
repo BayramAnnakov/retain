@@ -9,6 +9,68 @@ struct ConversationDetailView: View {
     @State private var scrollToBottom = false
     private let maxContentWidth: CGFloat = 760
 
+    // MARK: - Message Search State
+    @State private var isSearchVisible = false
+    @State private var messageSearchQuery = ""
+    @State private var currentMatchIndex = 0
+    @FocusState private var isSearchFocused: Bool
+
+    // Cached search results (updated via debounced search)
+    @State private var matchingMessageIds: [UUID] = []  // Ordered list for navigation
+    @State private var matchingMessageIdSet: Set<UUID> = []  // Set for O(1) lookup
+    @State private var searchDebounceTask: Task<Void, Never>?
+
+    /// Current match message ID for scrolling
+    private var currentMatchMessageId: UUID? {
+        guard !matchingMessageIds.isEmpty,
+              currentMatchIndex >= 0,
+              currentMatchIndex < matchingMessageIds.count else {
+            return nil
+        }
+        return matchingMessageIds[currentMatchIndex]
+    }
+
+    /// Perform search with debouncing
+    private func performSearch(query: String) {
+        // Cancel previous search
+        searchDebounceTask?.cancel()
+
+        let trimmedQuery = query.trimmingCharacters(in: .whitespaces)
+
+        // Clear immediately if empty
+        if trimmedQuery.isEmpty {
+            matchingMessageIds = []
+            matchingMessageIdSet = []
+            currentMatchIndex = 0
+            return
+        }
+
+        // Debounce: wait 150ms before searching
+        searchDebounceTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 150_000_000)
+            guard !Task.isCancelled else { return }
+
+            let lowercasedQuery = trimmedQuery.lowercased()
+            let messages = appState.selectedMessages
+
+            // Run search on background thread for large conversations
+            let results: [UUID] = await Task.detached(priority: .userInitiated) {
+                messages.compactMap { message in
+                    guard message.content.localizedCaseInsensitiveContains(lowercasedQuery) else {
+                        return nil
+                    }
+                    return message.id
+                }
+            }.value
+
+            guard !Task.isCancelled else { return }
+
+            matchingMessageIds = results
+            matchingMessageIdSet = Set(results)
+            currentMatchIndex = 0
+        }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // Header
@@ -36,6 +98,33 @@ struct ConversationDetailView: View {
                 Divider()
             }
 
+            // Search bar
+            if isSearchVisible {
+                MessageSearchBar(
+                    query: $messageSearchQuery,
+                    currentIndex: $currentMatchIndex,
+                    totalMatches: matchingMessageIds.count,
+                    isFocused: $isSearchFocused,
+                    onDismiss: {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            isSearchVisible = false
+                            messageSearchQuery = ""
+                            matchingMessageIds = []
+                            matchingMessageIdSet = []
+                            currentMatchIndex = 0
+                        }
+                    }
+                )
+                .padding(.horizontal)
+                .padding(.vertical, Spacing.sm)
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .onChange(of: messageSearchQuery) { _, newValue in
+                    performSearch(query: newValue)
+                }
+
+                Divider()
+            }
+
             // Messages
             if appState.isLoadingMessages {
                 Spacer()
@@ -48,9 +137,14 @@ struct ConversationDetailView: View {
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: Spacing.lg) {
                             ForEach(appState.selectedMessages.filter { shouldDisplayMessage($0) }) { message in
+                                // O(1) lookup using Set
+                                let isMatch = matchingMessageIdSet.contains(message.id)
+                                let isCurrentMatch = currentMatchMessageId == message.id
+
                                 MessageBubble(
                                     message: message,
-                                    provider: conversation.provider
+                                    provider: conversation.provider,
+                                    searchHighlight: isMatch ? (isCurrent: isCurrentMatch, query: messageSearchQuery) : nil
                                 )
                                     .id(message.id)
                             }
@@ -66,11 +160,46 @@ struct ConversationDetailView: View {
                             }
                         }
                     }
+                    // Scroll to current search match
+                    .onChange(of: currentMatchMessageId) { _, newValue in
+                        if let messageId = newValue {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                proxy.scrollTo(messageId, anchor: .center)
+                            }
+                        }
+                    }
+                    // Scroll when search results change
+                    .onChange(of: matchingMessageIds) { _, _ in
+                        if let messageId = currentMatchMessageId {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                proxy.scrollTo(messageId, anchor: .center)
+                            }
+                        }
+                    }
                 }
             }
         }
         .toolbar {
             ToolbarItemGroup(placement: .automatic) {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isSearchVisible.toggle()
+                        if isSearchVisible {
+                            isSearchFocused = true
+                        } else {
+                            searchDebounceTask?.cancel()
+                            messageSearchQuery = ""
+                            matchingMessageIds = []
+                            matchingMessageIdSet = []
+                            currentMatchIndex = 0
+                        }
+                    }
+                } label: {
+                    Label("Search", systemImage: isSearchVisible ? "magnifyingglass.circle.fill" : "magnifyingglass")
+                }
+                .keyboardShortcut("f", modifiers: .command)
+                .help("Search messages (⌘F)")
+
                 Button {
                     exportConversation()
                 } label: {
@@ -83,6 +212,21 @@ struct ConversationDetailView: View {
                     Label("Copy", systemImage: "doc.on.doc")
                 }
             }
+        }
+        // Keyboard shortcuts for search navigation
+        .onKeyPress(.escape) {
+            if isSearchVisible {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    searchDebounceTask?.cancel()
+                    isSearchVisible = false
+                    messageSearchQuery = ""
+                    matchingMessageIds = []
+                    matchingMessageIdSet = []
+                    currentMatchIndex = 0
+                }
+                return .handled
+            }
+            return .ignored
         }
     }
 
@@ -221,10 +365,21 @@ struct ConversationHeader: View {
 struct MessageBubble: View {
     let message: Message
     let provider: Provider
+    /// Search highlight info: (isCurrent: is this the active match, query: search term)
+    var searchHighlight: (isCurrent: Bool, query: String)?
+
     @State private var isExpanded = false
     @State private var isHovering = false
 
     private let maxPreviewLength = 500
+
+    private var isHighlighted: Bool {
+        searchHighlight != nil
+    }
+
+    private var isCurrentMatch: Bool {
+        searchHighlight?.isCurrent ?? false
+    }
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -257,6 +412,13 @@ struct MessageBubble: View {
                         .foregroundColor(AppColors.secondaryText)
 
                     Spacer()
+
+                    // Match indicator
+                    if isHighlighted {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(isCurrentMatch ? .orange : .secondary)
+                            .font(.caption)
+                    }
 
                     if isHovering {
                         CopyButton(text: message.content)
@@ -297,15 +459,29 @@ struct MessageBubble: View {
         }
         .padding(.horizontal, Spacing.lg)
         .padding(.vertical, Spacing.md)
-        .background(roleColor.opacity(0.08))
+        .background(highlightBackground)
         .cornerRadius(CornerRadius.xl)
         .overlay(alignment: .leading) {
             RoundedRectangle(cornerRadius: 12)
-                .fill(roleColor.opacity(0.35))
+                .fill(isCurrentMatch ? Color.orange : roleColor.opacity(0.35))
                 .frame(width: 3)
         }
+        .overlay(
+            RoundedRectangle(cornerRadius: CornerRadius.xl)
+                .stroke(isCurrentMatch ? Color.orange.opacity(0.5) : Color.clear, lineWidth: 2)
+        )
         .onHover { hovering in
             isHovering = hovering
+        }
+    }
+
+    private var highlightBackground: Color {
+        if isCurrentMatch {
+            return Color.orange.opacity(0.15)
+        } else if isHighlighted {
+            return Color.yellow.opacity(0.08)
+        } else {
+            return roleColor.opacity(0.08)
         }
     }
 
@@ -1457,6 +1633,102 @@ extension Role {
         case .system: return "gearshape.fill"
         case .tool: return "wrench.fill"
         }
+    }
+}
+
+// MARK: - Message Search Bar
+
+struct MessageSearchBar: View {
+    @Binding var query: String
+    @Binding var currentIndex: Int
+    let totalMatches: Int
+    var isFocused: FocusState<Bool>.Binding
+    let onDismiss: () -> Void
+
+    var body: some View {
+        HStack(spacing: Spacing.sm) {
+            // Search icon
+            Image(systemName: "magnifyingglass")
+                .foregroundColor(.secondary)
+                .font(.system(size: 14))
+
+            // Search field
+            TextField("Search messages...", text: $query)
+                .textFieldStyle(.plain)
+                .font(AppFont.body)
+                .focused(isFocused)
+                .onSubmit {
+                    // Enter key goes to next match
+                    goToNextMatch()
+                }
+
+            // Match count and navigation
+            if !query.isEmpty {
+                if totalMatches > 0 {
+                    Text("\(currentIndex + 1) of \(totalMatches)")
+                        .font(AppFont.caption)
+                        .foregroundColor(.secondary)
+                        .monospacedDigit()
+
+                    // Previous match
+                    Button {
+                        goToPreviousMatch()
+                    } label: {
+                        Image(systemName: "chevron.up")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundColor(.secondary)
+                    .disabled(totalMatches == 0)
+                    .help("Previous match (⇧↩)")
+
+                    // Next match
+                    Button {
+                        goToNextMatch()
+                    } label: {
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundColor(.secondary)
+                    .disabled(totalMatches == 0)
+                    .help("Next match (↩)")
+                } else {
+                    Text("No matches")
+                        .font(AppFont.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            // Dismiss button
+            Button {
+                onDismiss()
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundColor(.secondary)
+                    .font(.system(size: 14))
+            }
+            .buttonStyle(.plain)
+            .help("Close search (Esc)")
+        }
+        .padding(.horizontal, Spacing.md)
+        .padding(.vertical, Spacing.sm)
+        .background(AppColors.secondaryBackground)
+        .cornerRadius(CornerRadius.lg)
+        .overlay(
+            RoundedRectangle(cornerRadius: CornerRadius.lg)
+                .stroke(AppColors.separator, lineWidth: 1)
+        )
+    }
+
+    private func goToNextMatch() {
+        guard totalMatches > 0 else { return }
+        currentIndex = (currentIndex + 1) % totalMatches
+    }
+
+    private func goToPreviousMatch() {
+        guard totalMatches > 0 else { return }
+        currentIndex = currentIndex > 0 ? currentIndex - 1 : totalMatches - 1
     }
 }
 

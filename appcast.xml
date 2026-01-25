@@ -6,20 +6,20 @@
         <description>Updates for Retain</description>
         <language>en</language>
         <item>
-            <title>Version 0.1.8-beta</title>
+            <title>Version 0.1.9-beta</title>
             <description><![CDATA[
-                <h2>What's New in 0.1.8-beta</h2>
-                <p>Fix symlink handling for ~/.claude/projects</p>
+                <h2>What's New in 0.1.9-beta</h2>
+                <p>Add in-conversation message search (Cmd+F)</p>
             ]]></description>
-            <pubDate>Sat, 24 Jan 2026 08:53:04 -0800</pubDate>
-            <sparkle:version>5</sparkle:version>
-            <sparkle:shortVersionString>0.1.8-beta</sparkle:shortVersionString>
+            <pubDate>Sun, 25 Jan 2026 11:44:16 -0800</pubDate>
+            <sparkle:version>6</sparkle:version>
+            <sparkle:shortVersionString>0.1.9-beta</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <enclosure
-                url="https://github.com/BayramAnnakov/retain/releases/download/v0.1.8-beta/Retain-0.1.8-beta.dmg"
-                length="6335729"
+                url="https://github.com/BayramAnnakov/retain/releases/download/v0.1.9-beta/Retain-0.1.9-beta.dmg"
+                length="6364042"
                 type="application/octet-stream"
-                sparkle:edSignature="3MFaXjmGzSoOnIbjGGrPtoQRytxN2pXdUXkAUXrTXdl69k9+QusnOfVGA3rMifjkJKaiAneiknb0iPuS0e8+AQ=="
+                sparkle:edSignature="XcLAl4px2iFVhX2oFbGj1yPJ9NPkD40oaGdnuIG3OPlZLX/+gwnNwrTW9qEZsX0VeZT3xrcZm47IMYjMLgN4Bw=="
             />
         </item>
     </channel>
