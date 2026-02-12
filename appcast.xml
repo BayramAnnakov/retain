@@ -17,9 +17,9 @@
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <enclosure
                 url="https://github.com/BayramAnnakov/retain/releases/download/v0.1.10-beta/Retain-0.1.10-beta.dmg"
-                length="9174956"
+                length="9169991"
                 type="application/octet-stream"
-                sparkle:edSignature="AGpDH3zBjQBqKGy39tlQyIpeTdWV80hTejtfA6xmviwS4hUXTH25BD+c/h8Um5LuH2g/pBRbCE24hkajGgxACA=="
+                sparkle:edSignature="OPc7gJDO+tr9x+LmkTA05WSdJI/3sJMCf56yC8BhIXxgXDhQcZgJ9My9EpFPljNzuzkVG8kuPRwL/j+RVlj4AA=="
             />
         </item>
     </channel>
