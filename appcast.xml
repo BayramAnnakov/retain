@@ -6,20 +6,20 @@
         <description>Updates for Retain</description>
         <language>en</language>
         <item>
-            <title>Version 0.1.9-beta</title>
+            <title>Version 0.1.10-beta</title>
             <description><![CDATA[
-                <h2>What's New in 0.1.9-beta</h2>
-                <p>Add in-conversation message search (Cmd+F)</p>
+                <h2>What's New in 0.1.10-beta</h2>
+                <p>Pre-release audit fixes: search improvements, security hardening, UI polish, 34 new tests</p>
             ]]></description>
-            <pubDate>Sun, 25 Jan 2026 11:44:16 -0800</pubDate>
-            <sparkle:version>6</sparkle:version>
-            <sparkle:shortVersionString>0.1.9-beta</sparkle:shortVersionString>
+            <pubDate>Wed, 11 Feb 2026 16:43:23 -0800</pubDate>
+            <sparkle:version>7</sparkle:version>
+            <sparkle:shortVersionString>0.1.10-beta</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <enclosure
-                url="https://github.com/BayramAnnakov/retain/releases/download/v0.1.9-beta/Retain-0.1.9-beta.dmg"
-                length="6364042"
+                url="https://github.com/BayramAnnakov/retain/releases/download/v0.1.10-beta/Retain-0.1.10-beta.dmg"
+                length="9174956"
                 type="application/octet-stream"
-                sparkle:edSignature="XcLAl4px2iFVhX2oFbGj1yPJ9NPkD40oaGdnuIG3OPlZLX/+gwnNwrTW9qEZsX0VeZT3xrcZm47IMYjMLgN4Bw=="
+                sparkle:edSignature="AGpDH3zBjQBqKGy39tlQyIpeTdWV80hTejtfA6xmviwS4hUXTH25BD+c/h8Um5LuH2g/pBRbCE24hkajGgxACA=="
             />
         </item>
     </channel>
