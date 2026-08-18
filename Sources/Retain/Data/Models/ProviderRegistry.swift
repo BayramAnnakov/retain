@@ -8,6 +8,7 @@ enum ProviderRegistry {
     static let all: [ProviderConfiguration] = [
         ClaudeCodeProviderConfig(),
         CodexProviderConfig(),
+        AntigravityProviderConfig(),
         OpenCodeProviderConfig(),
         GeminiCLIProviderConfig(),
         CopilotProviderConfig(),
@@ -252,6 +253,28 @@ struct CursorProviderConfig: ProviderConfiguration {
         // Check both workspace and global storage
         if CursorParser.workspaceStorageDirectory != nil ||
            CursorParser.globalStorageDirectory != nil {
+            return .installed(version: nil)
+        }
+// MARK: - Antigravity Configuration
+
+struct AntigravityProviderConfig: ProviderConfiguration {
+    let provider = Provider.antigravity
+    let displayName = "Antigravity"
+    let iconName = "sparkles"
+    let brandColor = Color.cyan
+    let isSupported = true
+    let isWebProvider = false
+    let enabledKey = "antigravityEnabled"
+    let sourceDescription = "~/.gemini/antigravity*/brain/"
+
+    var dataPath: URL? {
+        AntigravityParser.primaryDirectory
+    }
+
+    var filePattern: String? { "*transcript*.jsonl" }
+
+    func detectInstallation() -> ProviderInstallStatus {
+        if AntigravityParser.isInstalled {
             return .installed(version: nil)
         }
         return .notInstalled

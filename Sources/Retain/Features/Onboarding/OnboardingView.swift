@@ -917,6 +917,8 @@ struct CLIToolDetector {
             return openCodeStatus()
         case .geminiCLI:
             return geminiCLIStatus()
+        case .antigravity:
+            return antigravityStatus()
         case .copilot:
             return copilotStatus()
         case .cursor:
@@ -995,6 +997,19 @@ struct CLIToolDetector {
         }
 
         return .found(count: 1, size: "Found")
+    }
+
+    /// Antigravity status detection
+    static func antigravityStatus() -> CLIToolStatus {
+        let count = AntigravityParser.discoverConversations().count
+        if count > 0 {
+            let label = count == 1 ? "1 conversation" : "\(count) conversations"
+            return .found(count: count, size: label)
+        }
+        if AntigravityParser.isInstalled {
+            return .found(count: 0, size: "Found")
+        }
+        return .notFound
     }
 
     /// Cursor status detection

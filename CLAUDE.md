@@ -72,6 +72,7 @@ Sources/Retain/
 |--------|----------|--------|-----------|
 | Claude Code | `~/.claude/projects/**/*.jsonl` | JSONL | Yes (FSEvents) |
 | Codex CLI | `~/.codex/history.jsonl` | JSONL | Yes (FSEvents) |
+| Antigravity | `~/.gemini/antigravity*/brain/` | JSONL | Yes (FSEvents) |
 | Cursor | `~/Library/Application Support/Cursor/User/*Storage/state.vscdb` | SQLite | Yes (FSEvents) |
 | claude.ai | Web API | JSON | Manual connect |
 | chatgpt.com | Web API | JSON | Manual connect |
@@ -242,6 +243,7 @@ From [agent-sessions](https://github.com/jazzyalex/agent-sessions):
 |----------|----------|--------|
 | Claude Code | `~/.claude/projects/**/*.jsonl` | JSONL |
 | Codex CLI | `~/.codex/sessions/` | JSONL |
+| Antigravity | `~/.gemini/antigravity*/brain/` | JSONL |
 | OpenCode | `~/.local/share/opencode/storage/` | JSON |
 | Gemini CLI | `~/.gemini/tmp/` | JSON |
 | GitHub Copilot CLI | `~/.copilot/session-state/` | JSON |

@@ -186,6 +186,7 @@ struct SidebarView: View {
     // AppStorage bindings for provider enabled state
     @AppStorage("opencodeEnabled") private var opencodeEnabled = false
     @AppStorage("geminiCLIEnabled") private var geminiCLIEnabled = false
+    @AppStorage("antigravityEnabled") private var antigravityEnabled = false
     @AppStorage("copilotEnabled") private var copilotEnabled = false
     @AppStorage("cursorEnabled") private var cursorEnabled = false
 
@@ -206,6 +207,7 @@ struct SidebarView: View {
         switch provider {
         case .opencode: return opencodeEnabled
         case .geminiCLI: return geminiCLIEnabled
+        case .antigravity: return antigravityEnabled
         case .copilot: return copilotEnabled
         case .cursor: return cursorEnabled
         default: return true  // Core providers always enabled
@@ -1124,7 +1126,7 @@ struct EmptyConversationListView: View {
                 hasSynced: appState.syncedProviders.contains(.chatgptWeb),
                 providerName: "ChatGPT"
             )
-        case .claudeCode, .codex, .gemini, .opencode, .geminiCLI, .copilot, .cursor:
+        case .claudeCode, .codex, .gemini, .opencode, .geminiCLI, .copilot, .cursor, .antigravity:
             // CLI providers - show sync button
             UnifiedEmptyState.noData(
                 title: "No \(provider.displayName) conversations",
