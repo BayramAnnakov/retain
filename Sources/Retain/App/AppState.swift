@@ -1310,6 +1310,8 @@ final class AppState: ObservableObject {
         selectedFilterProvider = nil
 
         switch smartFolder {
+        case .all:
+            filteredConversations = conversations
         case .today:
             filteredConversations = conversations.filter {
                 Calendar.current.isDateInToday($0.updatedAt)

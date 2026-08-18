@@ -344,6 +344,8 @@ struct SidebarView: View {
 
     private func countForFolder(_ folder: SmartFolder) -> Int {
         switch folder {
+        case .all:
+            return appState.conversations.count
         case .today:
             return appState.conversations.filter { Calendar.current.isDateInToday($0.updatedAt) }.count
         case .thisWeek:
@@ -538,6 +540,7 @@ struct SmartFolderRow: View {
 
 struct SidebarFooter: View {
     @EnvironmentObject private var appState: AppState
+    @Environment(\.openSettings) private var openSettings
     @State private var showingSettingsSheet = false
     @State private var pulseAnimation = false
 
@@ -586,10 +589,8 @@ struct SidebarFooter: View {
                         return
                     }
 
-                    let didOpen = NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-                    if !didOpen {
-                        showingSettingsSheet = true
-                    }
+                    openSettings()
+                    NSApp.activate(ignoringOtherApps: true)
                 } label: {
                     Image(systemName: "gearshape")
                         .font(.system(size: IconSize.md))

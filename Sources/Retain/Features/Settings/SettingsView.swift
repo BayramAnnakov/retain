@@ -862,13 +862,13 @@ struct AIFeaturesSettingsView: View {
                     Image(systemName: "info.circle")
                         .font(.caption)
                         .foregroundColor(.blue)
-                    Text("Learning extraction sends last 10 messages to Google. Workflow sends title, preview, and first message. API key stored in Keychain.")
+                    Text("Learning extraction sends last 10 messages to Google AI Studio. Workflow sends title, preview, and first message. API key stored in Keychain.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             } header: {
                 HStack {
-                    Text("Gemini (Cloud AI)")
+                    Text("Google AI / Gemini (Cloud)")
                     Spacer()
                     Text("CLOUD")
                         .font(.caption2)
