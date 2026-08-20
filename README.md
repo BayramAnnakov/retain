@@ -12,10 +12,17 @@
 
 ---
 
-### ⬇️ Quick Download & Install
+### ⚡ One-Line Install (macOS Terminal)
 
-- **Latest Pre-Built App**: [**Download Retain v0.1.11 (macOS Apple Silicon)**](https://github.com/tolmachevmaxim/retain/releases/latest)
-- **Install**: Unzip `Retain-v0.1.11-antigravity-arm64.zip`, move `Retain.app` to `/Applications`, and open.
+Install or update to the latest pre-built release with a single command:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/tolmachevmaxim/retain/main/install.sh | bash
+```
+
+*(Automatically downloads the latest release, installs to `/Applications/Retain.app`, and launches the app).*
+
+Or download the zip directly: **[Retain v0.1.11 (macOS Apple Silicon)](https://github.com/tolmachevmaxim/retain/releases/latest)**.
 
 ---
 
