@@ -1,35 +1,66 @@
-# Retain
+# Retain (Enhanced Fork)
 
-[![Beta](https://img.shields.io/badge/status-beta-yellow)](../../releases)
-[![macOS](https://img.shields.io/badge/macOS-14.0%2B-blue)](../../releases)
+[![Latest Release](https://img.shields.io/github/v/release/tolmachevmaxim/retain?label=download%20build&color=blue)](https://github.com/tolmachevmaxim/retain/releases/latest)
+[![macOS](https://img.shields.io/badge/macOS-14.0%2B-blue)](https://github.com/tolmachevmaxim/retain/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Upstream](https://img.shields.io/badge/upstream-BayramAnnakov%2Fretain-orange)](https://github.com/BayramAnnakov/retain)
 
-> A unified knowledge base for your AI conversations. Search, learn, and reflect across Claude Code, Cursor, Codex, claude.ai, ChatGPT, and more.
+> A unified knowledge base for your AI conversations. Search, learn, and reflect across **Google Antigravity**, **Claude Code**, **Codex**, **Cursor**, **claude.ai**, **ChatGPT**, and more.
+
+> [!NOTE]
+> This is an enhanced fork by [@tolmachevmaxim](https://github.com/tolmachevmaxim) based on [BayramAnnakov/retain](https://github.com/BayramAnnakov/retain). It includes native **Google Antigravity** ingestion, a robust zero-crash analytics engine for massive datasets, cross-provider all-time search, and macOS stability fixes.
+
+---
+
+### ⬇️ Quick Download & Install
+
+- **Latest Pre-Built App**: [**Download Retain v0.1.11 (macOS Apple Silicon)**](https://github.com/tolmachevmaxim/retain/releases/latest)
+- **Install**: Unzip `Retain-v0.1.11-antigravity-arm64.zip`, move `Retain.app` to `/Applications`, and open.
+
+---
 
 <p align="center">
   <img src="docs/screenshots/conversations.png" width="800" alt="Conversation Browser">
 </p>
 
-<p align="center">
-  <img src="docs/screenshots/analytics.png" width="800" alt="Analytics Dashboard">
-</p>
-
-From the creator of [claude-reflect](https://github.com/BayramAnnakov/claude-reflect) (300+ stars) - this is the evolution: a native macOS app that aggregates *all* your AI conversations, extracts learnings, and helps you build persistent context.
-
 ## What It Does
 
-**The problem**: You use Claude Code, claude.ai, ChatGPT, and other AI tools daily. Context is scattered. When you discover a preference in one tool, you lose it in another. You keep re-explaining the same things.
+**The problem**: You use Google Antigravity, Claude Code, claude.ai, ChatGPT, Codex, and other AI tools daily. Context is scattered. When you discover a preference or prompt correction in one tool, you lose it in another. You keep re-explaining the same things.
 
-**The solution**: Retain aggregates all your AI conversations into a single searchable knowledge base. It automatically extracts corrections and preferences, then exports them to `CLAUDE.md` so Claude remembers what you taught it.
+**The solution**: Retain aggregates all your AI conversations into a single local searchable knowledge base. It automatically extracts corrections and preferences, then exports them to `CLAUDE.md` / system prompts so your AI assistants remember what you taught them.
 
-### Key Features
+## 🚀 Key Improvements in this Fork
 
-- **Multi-source sync**: Auto-sync from CLI tools (Claude Code, Codex, Cursor, Gemini CLI, OpenCode, GitHub Copilot CLI), manual sync from claude.ai and ChatGPT (cookie-based)
-- **Instant search**: Full-text search across 10k+ conversations with FTS5
-- **Learning extraction**: Automatic detection of corrections ("no, use X instead") and preferences
-- **CLAUDE.md export**: Export approved learnings so Claude remembers your preferences
-- **Auto-updates**: Automatic update notifications via Sparkle framework
-- **Local-first**: All data stored locally. Optional cloud features (web sync, AI analysis) connect to external services when enabled.
+1. **🌌 Google Antigravity Support (CLI, IDE & Subagents)**:
+   - Native two-pass ingestion of conversation trajectories (`transcript.jsonl` + `transcript_full.jsonl`).
+   - Parses user prompts, assistant reasoning, multi-turn steps, subagent invocations, and tool activities.
+   - Real-time `FileWatcher` automatically syncs new conversations as you work in Antigravity.
+2. **⚡ Zero-Crash Analytics Engine**:
+   - Replaced memory-heavy unindexed message iteration with high-performance SQLite SQL aggregation.
+   - Handles large conversation histories (230,000+ messages) smoothly without memory leaks or UI freezes.
+   - Safe date parsing with graceful ISO8601 fallback and collision-free dictionary aggregation.
+3. **🔍 Universal Search ("All Conversations")**:
+   - Dedicated top-level Smart Folder to search across *all* connected providers and dates at once.
+4. **⚙️ UI & Session Fixes**:
+   - Settings gear icon in the sidebar footer now reliably opens preferences.
+   - Resilient generic password fallback for macOS Keychain session persistence (Claude.ai & ChatGPT).
+5. **🛠 SwiftPM CLI Build Support**:
+   - Guarded `#Preview` macros and added `scripts/package_app.sh` for one-command release packaging with `swift build -c release`.
+
+---
+
+## Supported Sources
+
+| Source | Type | Sync Method | Status |
+|--------|------|-------------|--------|
+| **Google Antigravity** | CLI / IDE | Auto (file watching `~/.gemini/antigravity*/`) | ✅ **New in Fork** |
+| **Claude Code** | CLI | Auto (file watching `~/.claude/`) | ✅ Stable |
+| **Codex CLI** | CLI | Auto (file watching `~/.codex/`) | ✅ Stable |
+| **Cursor** | IDE | Auto (file watching) | ✅ Stable |
+| **OpenCode** | CLI | Auto (file watching) | ✅ Stable |
+| **GitHub Copilot CLI** | CLI | Auto (file watching) | ✅ Stable |
+| **claude.ai** | Web | Cookie import from Safari/Chrome/Firefox | ✅ Works |
+| **chatgpt.com** | Web | Cookie import from Safari/Chrome/Firefox | ✅ Works |
 
 ## Beta Status
 
