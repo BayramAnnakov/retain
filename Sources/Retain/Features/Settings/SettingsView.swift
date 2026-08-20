@@ -1621,7 +1621,9 @@ struct DiagnosticsSettingsView: View {
     }
 }
 
+#if canImport(PreviewsMacros)
 #Preview {
     SettingsView()
         .environmentObject(AppState())
 }
+#endif

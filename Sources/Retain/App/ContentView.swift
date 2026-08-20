@@ -1217,7 +1217,9 @@ enum SidebarItem: Hashable {
 
 // MARK: - Preview
 
+#if canImport(PreviewsMacros)
 #Preview {
     ContentView()
         .environmentObject(AppState())
 }
+#endif

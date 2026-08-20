@@ -270,6 +270,7 @@ struct BackendStatusBadge: View {
     }
 }
 
+#if canImport(PreviewsMacros)
 #Preview {
     Form {
         CLILLMSettingsView()
@@ -277,3 +278,4 @@ struct BackendStatusBadge: View {
     .formStyle(.grouped)
     .environmentObject(AppState())
 }
+#endif

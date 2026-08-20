@@ -307,7 +307,9 @@ struct MenuBarButtonStyle: ButtonStyle {
     }
 }
 
+#if canImport(PreviewsMacros)
 #Preview {
     MenuBarView()
         .environmentObject(AppState())
 }
+#endif

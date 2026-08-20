@@ -1069,7 +1069,9 @@ extension View {
     }
 }
 
+#if canImport(PreviewsMacros)
 #Preview {
     OnboardingView(isPresented: .constant(true))
         .environmentObject(AppState())
 }
+#endif

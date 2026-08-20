@@ -818,12 +818,17 @@ enum AnalyticsDataBuilder {
                 }
                 let correctionRows = try Row.fetchAll(db, sql: correctionSQL, arguments: StatementArguments(correctionArgs))
                 for row in correctionRows {
-                    let date: Date? = (try? row.decode(column: "createdAt")) ?? {
-                        if let s: String = row["createdAt"] {
-                            return ISO8601DateFormatter().date(from: s)
-                        }
-                        return nil
-                    }()
+                    let date: Date?
+                    if let dbValue = row["createdAt"] as DatabaseValue?, !dbValue.isNull {
+                        date = Date.fromDatabaseValue(dbValue) ?? {
+                            if let s = String.fromDatabaseValue(dbValue) {
+                                return ISO8601DateFormatter().date(from: s)
+                            }
+                            return nil
+                        }()
+                    } else {
+                        date = nil
+                    }
                     guard let validDate = date else { continue }
                     let start = bucketStart(for: validDate)
                     if let index = bucketIndex[start] {
@@ -839,12 +844,17 @@ enum AnalyticsDataBuilder {
                 }
                 let messageRows = try Row.fetchAll(db, sql: messageSQL, arguments: StatementArguments(messageArgs))
                 for row in messageRows {
-                    let date: Date? = (try? row.decode(column: "timestamp")) ?? {
-                        if let s: String = row["timestamp"] {
-                            return ISO8601DateFormatter().date(from: s)
-                        }
-                        return nil
-                    }()
+                    let date: Date?
+                    if let dbValue = row["timestamp"] as DatabaseValue?, !dbValue.isNull {
+                        date = Date.fromDatabaseValue(dbValue) ?? {
+                            if let s = String.fromDatabaseValue(dbValue) {
+                                return ISO8601DateFormatter().date(from: s)
+                            }
+                            return nil
+                        }()
+                    } else {
+                        date = nil
+                    }
                     guard let validDate = date else { continue }
                     let start = bucketStart(for: validDate)
                     if let index = bucketIndex[start] {
@@ -1923,7 +1933,9 @@ struct RecentConversationRow: View {
     }
 }
 
+#if canImport(PreviewsMacros)
 #Preview {
     AnalyticsView()
         .environmentObject(AppState())
 }
+#endif

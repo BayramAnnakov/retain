@@ -255,6 +255,10 @@ struct CursorProviderConfig: ProviderConfiguration {
            CursorParser.globalStorageDirectory != nil {
             return .installed(version: nil)
         }
+        return .notInstalled
+    }
+}
+
 // MARK: - Antigravity Configuration
 
 struct AntigravityProviderConfig: ProviderConfiguration {
@@ -286,3 +290,4 @@ struct AntigravityProviderConfig: ProviderConfiguration {
 // The existing ClaudeCodeParser and CodexParser have different APIs.
 // When we refactor SyncService to use the registry, we'll add adapters here.
 // For now, the registry provides configuration only.
+

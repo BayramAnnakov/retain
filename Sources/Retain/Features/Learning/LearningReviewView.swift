@@ -1192,7 +1192,9 @@ struct HowLearningsWorkView: View {
     }
 }
 
+#if canImport(PreviewsMacros)
 #Preview {
     LearningReviewView()
         .environmentObject(AppState())
 }
+#endif
