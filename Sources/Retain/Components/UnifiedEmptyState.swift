@@ -177,6 +177,7 @@ extension UnifiedEmptyState {
 
 // MARK: - Previews
 
+#if canImport(PreviewsMacros)
 #Preview("All Styles") {
     VStack(spacing: 0) {
         HStack(spacing: 0) {
@@ -206,3 +207,4 @@ extension UnifiedEmptyState {
         .border(Color.gray.opacity(0.3))
     }
 }
+#endif

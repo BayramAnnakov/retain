@@ -318,7 +318,9 @@ struct WebViewContainer: NSViewRepresentable {
     }
 }
 
+#if canImport(PreviewsMacros)
 #Preview {
     WebLoginSheet(provider: .claudeWeb)
         .environmentObject(AppState())
 }
+#endif

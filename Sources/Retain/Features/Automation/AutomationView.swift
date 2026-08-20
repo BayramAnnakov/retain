@@ -682,7 +682,9 @@ private struct HowAutomationWorksView: View {
     }
 }
 
+#if canImport(PreviewsMacros)
 #Preview {
     AutomationView()
         .environmentObject(AppState())
 }
+#endif

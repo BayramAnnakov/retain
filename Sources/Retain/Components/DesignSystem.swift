@@ -80,6 +80,7 @@ extension Provider {
     /// Short name for compact display
     var shortName: String {
         switch self {
+        case .antigravity: return "AGY"
         case .claudeCode: return "Code"
         case .claudeWeb: return "Claude"
         case .chatgptWeb: return "ChatGPT"
@@ -378,6 +379,7 @@ struct SkeletonList: View {
 
 /// Smart folder categories for sidebar
 enum SmartFolder: String, CaseIterable, Identifiable {
+    case all = "All Conversations"
     case today = "Today"
     case thisWeek = "This Week"
     case withLearnings = "With Learnings"
@@ -386,6 +388,7 @@ enum SmartFolder: String, CaseIterable, Identifiable {
 
     var iconName: String {
         switch self {
+        case .all: return "tray.2.fill"
         case .today: return "calendar"
         case .thisWeek: return "calendar.badge.clock"
         case .withLearnings: return "lightbulb.fill"
@@ -394,6 +397,7 @@ enum SmartFolder: String, CaseIterable, Identifiable {
 
     var color: Color {
         switch self {
+        case .all: return .indigo
         case .today: return .blue
         case .thisWeek: return .cyan
         case .withLearnings: return .orange

@@ -8,6 +8,7 @@ enum ProviderRegistry {
     static let all: [ProviderConfiguration] = [
         ClaudeCodeProviderConfig(),
         CodexProviderConfig(),
+        AntigravityProviderConfig(),
         OpenCodeProviderConfig(),
         GeminiCLIProviderConfig(),
         CopilotProviderConfig(),
@@ -258,8 +259,35 @@ struct CursorProviderConfig: ProviderConfiguration {
     }
 }
 
+// MARK: - Antigravity Configuration
+
+struct AntigravityProviderConfig: ProviderConfiguration {
+    let provider = Provider.antigravity
+    let displayName = "Antigravity"
+    let iconName = "sparkles"
+    let brandColor = Color.cyan
+    let isSupported = true
+    let isWebProvider = false
+    let enabledKey = "antigravityEnabled"
+    let sourceDescription = "~/.gemini/antigravity*/brain/"
+
+    var dataPath: URL? {
+        AntigravityParser.primaryDirectory
+    }
+
+    var filePattern: String? { "*transcript*.jsonl" }
+
+    func detectInstallation() -> ProviderInstallStatus {
+        if AntigravityParser.isInstalled {
+            return .installed(version: nil)
+        }
+        return .notInstalled
+    }
+}
+
 // MARK: - Parser Adapters (TODO: implement when refactoring SyncService)
 //
 // The existing ClaudeCodeParser and CodexParser have different APIs.
 // When we refactor SyncService to use the registry, we'll add adapters here.
 // For now, the registry provides configuration only.
+

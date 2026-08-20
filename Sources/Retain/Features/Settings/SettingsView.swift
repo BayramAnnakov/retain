@@ -167,6 +167,7 @@ struct DataSourcesSettingsView: View {
     @AppStorage("codexEnabled") private var codexEnabled = true
     @AppStorage("opencodeEnabled") private var opencodeEnabled = false
     @AppStorage("geminiCLIEnabled") private var geminiCLIEnabled = false
+    @AppStorage("antigravityEnabled") private var antigravityEnabled = false
     @AppStorage("copilotEnabled") private var copilotEnabled = false
     @AppStorage("cursorEnabled") private var cursorEnabled = false
 
@@ -182,6 +183,8 @@ struct DataSourcesSettingsView: View {
             return $claudeCodeEnabled
         case .codex:
             return $codexEnabled
+        case .antigravity:
+            return $antigravityEnabled
         case .opencode:
             return $opencodeEnabled
         case .geminiCLI:
@@ -859,13 +862,13 @@ struct AIFeaturesSettingsView: View {
                     Image(systemName: "info.circle")
                         .font(.caption)
                         .foregroundColor(.blue)
-                    Text("Learning extraction sends last 10 messages to Google. Workflow sends title, preview, and first message. API key stored in Keychain.")
+                    Text("Learning extraction sends last 10 messages to Google AI Studio. Workflow sends title, preview, and first message. API key stored in Keychain.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             } header: {
                 HStack {
-                    Text("Gemini (Cloud AI)")
+                    Text("Google AI / Gemini (Cloud)")
                     Spacer()
                     Text("CLOUD")
                         .font(.caption2)
@@ -1549,7 +1552,7 @@ struct DiagnosticsSettingsView: View {
             ))
 
             // Gemini CLI
-            let geminiPath = home.appendingPathComponent(".gemini")
+            let geminiPath = home.appendingPathComponent(".gemini/tmp")
             let geminiExists = fm.fileExists(atPath: geminiPath.path)
             let geminiFiles = geminiExists ? (try? fm.contentsOfDirectory(atPath: geminiPath.path))?.count ?? 0 : 0
             results.append(ProviderDiagnostic(
@@ -1558,6 +1561,21 @@ struct DiagnosticsSettingsView: View {
                 isEnabled: UserDefaults.standard.bool(forKey: "geminiCLIEnabled"),
                 paths: [ProviderDiagnostic.PathInfo(path: geminiPath.path, exists: geminiExists, fileCount: geminiFiles)],
                 conversationCount: appState.providerStats[.geminiCLI] ?? 0
+            ))
+
+            // Antigravity
+            let agyPaths = AntigravityParser.candidateBaseDirectories.map { base in
+                let brainDir = base.appendingPathComponent("brain")
+                let exists = fm.fileExists(atPath: brainDir.path)
+                let count = exists ? (try? fm.contentsOfDirectory(atPath: brainDir.path))?.count ?? 0 : 0
+                return ProviderDiagnostic.PathInfo(path: brainDir.path, exists: exists, fileCount: count)
+            }
+            results.append(ProviderDiagnostic(
+                provider: .antigravity,
+                name: "Antigravity",
+                isEnabled: UserDefaults.standard.bool(forKey: "antigravityEnabled"),
+                paths: agyPaths,
+                conversationCount: appState.providerStats[.antigravity] ?? 0
             ))
 
             // Copilot CLI
@@ -1603,7 +1621,9 @@ struct DiagnosticsSettingsView: View {
     }
 }
 
+#if canImport(PreviewsMacros)
 #Preview {
     SettingsView()
         .environmentObject(AppState())
 }
+#endif

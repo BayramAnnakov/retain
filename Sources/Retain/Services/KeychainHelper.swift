@@ -31,8 +31,8 @@ enum KeychainHelper {
         }
     }
 
-    /// Save a value to Keychain (Data Protection keychain only)
-    /// Never falls back to login keychain to avoid authorization prompts
+    /// Save a value to Keychain
+    /// Tries Data Protection keychain first, then falls back to standard generic password if entitlement is missing
     static func save(key: String, value: String) throws {
         guard let data = value.data(using: .utf8) else { return }
 
@@ -47,29 +47,26 @@ enum KeychainHelper {
             kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
         ]
 
-        // ONLY use Data Protection keychain - never fall back to login keychain
         if useDataProtection {
             query[kSecUseDataProtectionKeychain as String] = true
         }
 
-        let status = SecItemAdd(query as CFDictionary, nil)
+        var status = SecItemAdd(query as CFDictionary, nil)
 
-        // Don't fall back to login keychain - it triggers authorization prompts
-        guard status == errSecSuccess || status == errSecMissingEntitlement else {
-            print("⚠️ Keychain save failed with status: \(status)")
-            throw KeychainError.unexpectedStatus(status)
+        // If Data Protection keychain lacks entitlement, fallback to standard generic password
+        if status == errSecMissingEntitlement && useDataProtection {
+            query.removeValue(forKey: kSecUseDataProtectionKeychain as String)
+            status = SecItemAdd(query as CFDictionary, nil)
         }
 
-        // If we got errSecMissingEntitlement, the save silently failed but we don't
-        // fall back to avoid prompts. User will need to re-enter credentials.
-        if status == errSecMissingEntitlement {
-            print("⚠️ Data Protection keychain unavailable (missing entitlement). Credentials not saved.")
+        guard status == errSecSuccess else {
+            print("⚠️ Keychain save failed with status: \(status)")
+            throw KeychainError.unexpectedStatus(status)
         }
     }
 
     /// Get a value from Keychain
-    /// ONLY reads from Data Protection keychain to avoid authorization prompts.
-    /// Login keychain is only accessed during explicit migration.
+    /// Checks Data Protection keychain first, then falls back to standard generic password
     static func get(key: String) -> String? {
         var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -79,14 +76,19 @@ enum KeychainHelper {
             kSecMatchLimit as String: kSecMatchLimitOne
         ]
 
-        // ONLY use Data Protection keychain - never fall back to login keychain
-        // This prevents unexpected Keychain authorization prompts
         if useDataProtection {
             query[kSecUseDataProtectionKeychain as String] = true
         }
 
         var result: AnyObject?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        var status = SecItemCopyMatching(query as CFDictionary, &result)
+
+        // Fallback if not found or missing entitlement in Data Protection keychain
+        if (status == errSecItemNotFound || status == errSecMissingEntitlement) && useDataProtection {
+            query.removeValue(forKey: kSecUseDataProtectionKeychain as String)
+            result = nil
+            status = SecItemCopyMatching(query as CFDictionary, &result)
+        }
 
         guard status == errSecSuccess,
               let data = result as? Data,
@@ -96,8 +98,7 @@ enum KeychainHelper {
         return value
     }
 
-    /// Delete a value from Keychain (Data Protection keychain only)
-    /// Login keychain cleanup happens only during explicit migration
+    /// Delete a value from Keychain
     static func delete(key: String) throws {
         var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -105,15 +106,15 @@ enum KeychainHelper {
             kSecAttrAccount as String: key
         ]
 
-        // ONLY delete from Data Protection keychain
-        // This avoids triggering Keychain authorization prompts
         if useDataProtection {
             query[kSecUseDataProtectionKeychain as String] = true
+            _ = SecItemDelete(query as CFDictionary)
         }
 
+        query.removeValue(forKey: kSecUseDataProtectionKeychain as String)
         let status = SecItemDelete(query as CFDictionary)
 
-        guard status == errSecSuccess || status == errSecItemNotFound || status == errSecMissingEntitlement else {
+        guard status == errSecSuccess || status == errSecItemNotFound else {
             throw KeychainError.unexpectedStatus(status)
         }
     }

@@ -186,6 +186,7 @@ struct SidebarView: View {
     // AppStorage bindings for provider enabled state
     @AppStorage("opencodeEnabled") private var opencodeEnabled = false
     @AppStorage("geminiCLIEnabled") private var geminiCLIEnabled = false
+    @AppStorage("antigravityEnabled") private var antigravityEnabled = true
     @AppStorage("copilotEnabled") private var copilotEnabled = false
     @AppStorage("cursorEnabled") private var cursorEnabled = false
 
@@ -206,6 +207,7 @@ struct SidebarView: View {
         switch provider {
         case .opencode: return opencodeEnabled
         case .geminiCLI: return geminiCLIEnabled
+        case .antigravity: return antigravityEnabled
         case .copilot: return copilotEnabled
         case .cursor: return cursorEnabled
         default: return true  // Core providers always enabled
@@ -342,6 +344,8 @@ struct SidebarView: View {
 
     private func countForFolder(_ folder: SmartFolder) -> Int {
         switch folder {
+        case .all:
+            return appState.conversations.count
         case .today:
             return appState.conversations.filter { Calendar.current.isDateInToday($0.updatedAt) }.count
         case .thisWeek:
@@ -536,6 +540,7 @@ struct SmartFolderRow: View {
 
 struct SidebarFooter: View {
     @EnvironmentObject private var appState: AppState
+    @Environment(\.openSettings) private var openSettings
     @State private var showingSettingsSheet = false
     @State private var pulseAnimation = false
 
@@ -584,10 +589,8 @@ struct SidebarFooter: View {
                         return
                     }
 
-                    let didOpen = NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-                    if !didOpen {
-                        showingSettingsSheet = true
-                    }
+                    openSettings()
+                    NSApp.activate(ignoringOtherApps: true)
                 } label: {
                     Image(systemName: "gearshape")
                         .font(.system(size: IconSize.md))
@@ -1124,7 +1127,7 @@ struct EmptyConversationListView: View {
                 hasSynced: appState.syncedProviders.contains(.chatgptWeb),
                 providerName: "ChatGPT"
             )
-        case .claudeCode, .codex, .gemini, .opencode, .geminiCLI, .copilot, .cursor:
+        case .claudeCode, .codex, .gemini, .opencode, .geminiCLI, .copilot, .cursor, .antigravity:
             // CLI providers - show sync button
             UnifiedEmptyState.noData(
                 title: "No \(provider.displayName) conversations",
@@ -1214,7 +1217,9 @@ enum SidebarItem: Hashable {
 
 // MARK: - Preview
 
+#if canImport(PreviewsMacros)
 #Preview {
     ContentView()
         .environmentObject(AppState())
 }
+#endif

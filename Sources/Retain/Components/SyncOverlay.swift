@@ -561,6 +561,7 @@ struct UndoDeleteToast: View {
 
 // MARK: - Preview
 
+#if canImport(PreviewsMacros)
 #Preview("Sync Overlay") {
     let state = SyncState()
 
@@ -606,3 +607,4 @@ struct UndoDeleteToast: View {
         Spacer()
     }
 }
+#endif

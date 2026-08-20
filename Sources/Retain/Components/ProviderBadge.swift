@@ -216,6 +216,7 @@ struct ProviderSidebarRow: View {
 
 // MARK: - Previews
 
+#if canImport(PreviewsMacros)
 #Preview("Provider Badge Sizes") {
     VStack(spacing: 20) {
         HStack(spacing: 12) {
@@ -249,3 +250,4 @@ struct ProviderSidebarRow: View {
     .padding()
     .frame(width: 250)
 }
+#endif

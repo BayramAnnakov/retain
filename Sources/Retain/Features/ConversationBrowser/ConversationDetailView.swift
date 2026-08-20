@@ -1786,6 +1786,7 @@ struct CopyButton: View {
     }
 }
 
+#if canImport(PreviewsMacros)
 #Preview {
     ConversationDetailView(conversation: Conversation(
         id: UUID(),
@@ -1798,3 +1799,4 @@ struct CopyButton: View {
     ))
     .environmentObject(AppState())
 }
+#endif

@@ -130,6 +130,16 @@ final class FileWatcher: ObservableObject {
         watch(directory: dir, extensions: ["json"], onChange: onChange)
     }
 
+    /// Watch Antigravity conversation directories
+    func watchAntigravity(onChange: @escaping ChangeHandler) {
+        for base in AntigravityParser.candidateBaseDirectories {
+            let brainDir = base.appendingPathComponent("brain")
+            if FileManager.default.fileExists(atPath: brainDir.path) {
+                watch(directory: brainDir, extensions: ["jsonl"], onChange: onChange)
+            }
+        }
+    }
+
     /// Watch Copilot CLI sessions directory
     func watchCopilot(onChange: @escaping ChangeHandler) {
         guard let dir = CopilotCLIParser.copilotDirectory else { return }

@@ -424,7 +424,8 @@ struct AnalyticsView: View {
         }
 
         let countsByDay = Dictionary(
-            uniqueKeysWithValues: dailyActivity.map { (calendar.startOfDay(for: $0.date), $0.count) }
+            dailyActivity.map { (calendar.startOfDay(for: $0.date), $0.count) },
+            uniquingKeysWith: +
         )
 
         let alignedStart = alignToWeekStart(rangeStart, calendar: calendar)
@@ -744,7 +745,7 @@ enum AnalyticsDataBuilder {
         do {
             return try database.dbWriter.read { db in
                 var sql = """
-                    SELECT c.provider AS provider, m.timestamp AS timestamp
+                    SELECT c.provider AS provider, CAST(strftime('%H', m.timestamp) AS INTEGER) AS hour, COUNT(*) AS count
                     FROM messages m
                     JOIN conversations c ON c.id = m.conversationId
                     WHERE m.role = ?
@@ -754,19 +755,19 @@ enum AnalyticsDataBuilder {
                     sql += " AND m.timestamp >= ?"
                     args.append(cutoffDate)
                 }
+                sql += " GROUP BY c.provider, hour"
 
                 let rows = try Row.fetchAll(db, sql: sql, arguments: StatementArguments(args))
                 var counts: [Provider: [Int]] = [:]
-                let calendar = Calendar.current
 
                 for row in rows {
                     guard let providerRaw: String = row["provider"],
                           let provider = Provider(rawValue: providerRaw),
-                          let timestamp: Date = row["timestamp"] else { continue }
-                    let hour = calendar.component(.hour, from: timestamp)
+                          let hour: Int = row["hour"],
+                          let count: Int = row["count"] else { continue }
                     var hours = counts[provider] ?? Array(repeating: 0, count: 24)
                     if hour >= 0 && hour < hours.count {
-                        hours[hour] += 1
+                        hours[hour] += count
                     }
                     counts[provider] = hours
                 }
@@ -797,7 +798,10 @@ enum AnalyticsDataBuilder {
                 let endDate = Date()
                 let startDate = cutoffDate ?? Calendar.current.date(byAdding: .month, value: -6, to: endDate) ?? endDate
                 let buckets = buildHeatmapBuckets(startDate: startDate, endDate: endDate, bucketSize: bucketSize)
-                let bucketIndex = Dictionary(uniqueKeysWithValues: buckets.enumerated().map { ($0.element.startDate, $0.offset) })
+                let bucketIndex = Dictionary(
+                    buckets.enumerated().map { ($0.element.startDate, $0.offset) },
+                    uniquingKeysWith: { first, _ in first }
+                )
 
                 func bucketStart(for date: Date) -> Date {
                     bucketSize.startDate(for: date)
@@ -814,8 +818,19 @@ enum AnalyticsDataBuilder {
                 }
                 let correctionRows = try Row.fetchAll(db, sql: correctionSQL, arguments: StatementArguments(correctionArgs))
                 for row in correctionRows {
-                    guard let date: Date = row["createdAt"] else { continue }
-                    let start = bucketStart(for: date)
+                    let date: Date?
+                    if let dbValue = row["createdAt"] as DatabaseValue?, !dbValue.isNull {
+                        date = Date.fromDatabaseValue(dbValue) ?? {
+                            if let s = String.fromDatabaseValue(dbValue) {
+                                return ISO8601DateFormatter().date(from: s)
+                            }
+                            return nil
+                        }()
+                    } else {
+                        date = nil
+                    }
+                    guard let validDate = date else { continue }
+                    let start = bucketStart(for: validDate)
                     if let index = bucketIndex[start] {
                         correctionCounts[index] += 1
                     }
@@ -829,8 +844,19 @@ enum AnalyticsDataBuilder {
                 }
                 let messageRows = try Row.fetchAll(db, sql: messageSQL, arguments: StatementArguments(messageArgs))
                 for row in messageRows {
-                    guard let date: Date = row["timestamp"] else { continue }
-                    let start = bucketStart(for: date)
+                    let date: Date?
+                    if let dbValue = row["timestamp"] as DatabaseValue?, !dbValue.isNull {
+                        date = Date.fromDatabaseValue(dbValue) ?? {
+                            if let s = String.fromDatabaseValue(dbValue) {
+                                return ISO8601DateFormatter().date(from: s)
+                            }
+                            return nil
+                        }()
+                    } else {
+                        date = nil
+                    }
+                    guard let validDate = date else { continue }
+                    let start = bucketStart(for: validDate)
                     if let index = bucketIndex[start] {
                         messageCounts[index] += 1
                     }
@@ -1520,9 +1546,13 @@ struct TaskAffinityView: View {
     let data: [TaskAffinityDatum]
 
     private var providerDomain: [String] {
-        Provider.allCases
-            .filter { $0.isSupported }
-            .map { $0.displayName }
+        let present = Set(data.map { $0.provider.displayName })
+        let supported = Provider.allCases.filter { $0.isSupported }.map { $0.displayName }
+        var result = supported
+        for name in present where !result.contains(name) {
+            result.append(name)
+        }
+        return result
     }
 
     var body: some View {
@@ -1573,9 +1603,13 @@ struct CorrectionRateView: View {
     let data: [CorrectionRateRow]
 
     private var providerDomain: [String] {
-        Provider.allCases
-            .filter { $0.isSupported }
-            .map { $0.displayName }
+        let present = Set(data.map { $0.provider.displayName })
+        let supported = Provider.allCases.filter { $0.isSupported }.map { $0.displayName }
+        var result = supported
+        for name in present where !result.contains(name) {
+            result.append(name)
+        }
+        return result
     }
 
     var body: some View {
@@ -1899,7 +1933,9 @@ struct RecentConversationRow: View {
     }
 }
 
+#if canImport(PreviewsMacros)
 #Preview {
     AnalyticsView()
         .environmentObject(AppState())
 }
+#endif

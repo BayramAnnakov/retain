@@ -26,6 +26,7 @@ final class AppState: ObservableObject {
     @AppStorage("codexEnabled") var codexEnabled: Bool = true
     @AppStorage("opencodeEnabled") var opencodeEnabled: Bool = false
     @AppStorage("geminiCLIEnabled") var geminiCLIEnabled: Bool = false
+    @AppStorage("antigravityEnabled") var antigravityEnabled: Bool = false
     @AppStorage("copilotEnabled") var copilotEnabled: Bool = false
     @AppStorage("cursorEnabled") var cursorEnabled: Bool = false
     @AppStorage("geminiWorkflowEnabled") var geminiWorkflowEnabled: Bool = false
@@ -637,6 +638,11 @@ final class AppState: ObservableObject {
         // Watch Gemini CLI
         if geminiCLIEnabled {
             fileWatcher.watchGeminiCLI(onChange: fileChangeHandler)
+        }
+
+        // Watch Antigravity
+        if antigravityEnabled {
+            fileWatcher.watchAntigravity(onChange: fileChangeHandler)
         }
 
         // Watch Copilot CLI
@@ -1270,6 +1276,7 @@ final class AppState: ObservableObject {
         if codexEnabled { providers.insert(.codex) }
         if opencodeEnabled { providers.insert(.opencode) }
         if geminiCLIEnabled { providers.insert(.geminiCLI) }
+        if antigravityEnabled { providers.insert(.antigravity) }
         if copilotEnabled { providers.insert(.copilot) }
         if cursorEnabled { providers.insert(.cursor) }
         return providers
@@ -1303,6 +1310,8 @@ final class AppState: ObservableObject {
         selectedFilterProvider = nil
 
         switch smartFolder {
+        case .all:
+            filteredConversations = conversations
         case .today:
             filteredConversations = conversations.filter {
                 Calendar.current.isDateInToday($0.updatedAt)

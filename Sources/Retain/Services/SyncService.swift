@@ -209,6 +209,9 @@ actor SyncService {
     /// UserDefaults key for Claude Code parser version (force resync on format changes)
     private static let claudeCodeParserVersionKey = "Retain.SyncService.claudeCodeParserVersion"
     private static let claudeCodeParserVersion = 3  // Bumped: strip XML metadata tags from titles/previews
+    /// UserDefaults key for Antigravity parser version
+    private static let antigravityParserVersionKey = "Retain.SyncService.antigravityParserVersion"
+    private static let antigravityParserVersion = 1
 
     /// Cached file modification dates (path -> modification date)
     private var fileModificationDates: [String: Date]?
@@ -219,6 +222,7 @@ actor SyncService {
     init(repository: ConversationRepository = ConversationRepository()) {
         self.repository = repository
         ensureClaudeCodeParserVersion()
+        ensureAntigravityParserVersion()
     }
 
     /// Clear file modification cache when parser version changes (ensures tool calls get re-ingested)
@@ -227,6 +231,13 @@ actor SyncService {
         guard storedVersion != Self.claudeCodeParserVersion else { return }
         clearFileModificationCache()
         UserDefaults.standard.set(Self.claudeCodeParserVersion, forKey: Self.claudeCodeParserVersionKey)
+    }
+
+    private func ensureAntigravityParserVersion() {
+        let storedVersion = UserDefaults.standard.integer(forKey: Self.antigravityParserVersionKey)
+        guard storedVersion != Self.antigravityParserVersion else { return }
+        clearFileModificationCache()
+        UserDefaults.standard.set(Self.antigravityParserVersion, forKey: Self.antigravityParserVersionKey)
     }
 
     /// Load persisted file modification dates from UserDefaults (lazy loading)
@@ -466,6 +477,8 @@ actor SyncService {
             return try await syncClaudeCode()
         case .codex:
             return try await syncCodex()
+        case .antigravity:
+            return try await syncAntigravity()
         case .opencode:
             return try await syncOpenCode()
         case .geminiCLI:
@@ -538,6 +551,20 @@ actor SyncService {
             } catch {
                 #if DEBUG
                 print("Failed to sync Codex history: \(error)")
+                #endif
+            }
+        } else if AntigravityParser.isAntigravityPath(path) && url.pathExtension == "jsonl" {
+            // Antigravity conversation file - parse conversation and merge both transcripts
+            do {
+                if let (conversation, messages) = AntigravityParser.parseSession(at: url) {
+                    if let result = await saveToDatabase(conversation, messages: messages),
+                       result.didChange {
+                        return [result.id]
+                    }
+                }
+            } catch {
+                #if DEBUG
+                print("Failed to sync Antigravity file \(url.lastPathComponent): \(error)")
                 #endif
             }
         }
@@ -1054,6 +1081,57 @@ actor SyncService {
         await updateProviderProgress(provider, ProviderSyncProgress(
             phase: .completed, progress: 1.0, weight: 0.2,
             itemsProcessed: totalFiles, totalItems: totalFiles
+        ))
+
+        return stats
+    }
+
+    // MARK: - Antigravity Sync
+
+    private func syncAntigravity() async throws -> SyncStats {
+        var stats = SyncStats()
+        let provider = Provider.antigravity
+
+        // Phase 1: Discovery
+        await updateProviderProgress(provider, .discovering(weight: 0.3))
+
+        let conversations = AntigravityParser.discoverConversations()
+        let total = conversations.count
+
+        guard total > 0 else {
+            await updateProviderProgress(provider, ProviderSyncProgress(phase: .completed, progress: 1.0, weight: 0.3))
+            return stats
+        }
+
+        // Phase 2: Parse and save each conversation
+        let progressUpdateInterval = max(5, total / 20)
+
+        for (index, item) in conversations.enumerated() {
+            try Task.checkCancellation()
+
+            if index % progressUpdateInterval == 0 || index == total - 1 {
+                let progress = Double(index + 1) / Double(total)
+                await updateProviderProgress(provider, ProviderSyncProgress(
+                    phase: .parsing(current: index + 1, total: total),
+                    progress: progress * 0.9,
+                    weight: 0.3,
+                    itemsProcessed: index + 1,
+                    totalItems: total
+                ))
+            }
+
+            if let (conversation, messages) = AntigravityParser.parseConversation(item) {
+                if let result = await saveToDatabase(conversation, messages: messages), result.didChange {
+                    stats.conversationsUpdated += 1
+                    stats.messagesUpdated += messages.count
+                    stats.updatedConversationIds.insert(result.id)
+                }
+            }
+        }
+
+        await updateProviderProgress(provider, ProviderSyncProgress(
+            phase: .completed, progress: 1.0, weight: 0.3,
+            itemsProcessed: total, totalItems: total
         ))
 
         return stats
