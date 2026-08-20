@@ -22,15 +22,17 @@ mkdir -p "$MACOS_DIR" "$RESOURCES_DIR" "$FRAMEWORKS_DIR"
 cp "$DIR/.build/release/Retain" "$MACOS_DIR/Retain"
 chmod +x "$MACOS_DIR/Retain"
 
+# Add Frameworks rpath if not present
+install_name_tool -add_rpath @executable_path/../Frameworks "$MACOS_DIR/Retain" 2>/dev/null || true
+
 # Copy Icon & Resources
 if [ -f "$DIR/Resources/AppIcon.icns" ]; then
     cp "$DIR/Resources/AppIcon.icns" "$RESOURCES_DIR/AppIcon.icns"
 fi
 
-# Copy Sparkle Framework if present in build checkouts or system
-SPARKLE_FRAMEWORK=$(find "$DIR/.build" -name "Sparkle.framework" -type d | head -n 1)
-if [ -n "$SPARKLE_FRAMEWORK" ] && [ -d "$SPARKLE_FRAMEWORK" ]; then
-    cp -R "$SPARKLE_FRAMEWORK" "$FRAMEWORKS_DIR/"
+# Copy Sparkle Framework
+if [ -d "/Applications/Retain.app.original.backup/Contents/Frameworks/Sparkle.framework" ]; then
+    cp -R "/Applications/Retain.app.original.backup/Contents/Frameworks/Sparkle.framework" "$FRAMEWORKS_DIR/"
 elif [ -d "/Applications/Retain.app/Contents/Frameworks/Sparkle.framework" ]; then
     cp -R "/Applications/Retain.app/Contents/Frameworks/Sparkle.framework" "$FRAMEWORKS_DIR/"
 fi
