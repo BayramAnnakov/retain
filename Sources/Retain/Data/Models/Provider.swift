@@ -4,15 +4,15 @@ import SwiftUI
 /// AI provider/platform that conversations originate from
 enum Provider: String, Codable, CaseIterable {
     case claudeCode = "claude_code"
+    case codex = "codex"
+    case antigravity = "antigravity"
     case claudeWeb = "claude_web"
     case chatgptWeb = "chatgpt_web"
-    case codex = "codex"
-    case gemini = "gemini"
     case opencode = "opencode"
-    case geminiCLI = "gemini_cli"
     case cursor = "cursor"
     case copilot = "copilot"
-    case antigravity = "antigravity"
+    case geminiCLI = "gemini_cli"
+    case gemini = "gemini"
 
     /// Get the configuration for this provider from the registry
     var configuration: ProviderConfiguration? {

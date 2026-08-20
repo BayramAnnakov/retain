@@ -186,7 +186,7 @@ struct SidebarView: View {
     // AppStorage bindings for provider enabled state
     @AppStorage("opencodeEnabled") private var opencodeEnabled = false
     @AppStorage("geminiCLIEnabled") private var geminiCLIEnabled = false
-    @AppStorage("antigravityEnabled") private var antigravityEnabled = false
+    @AppStorage("antigravityEnabled") private var antigravityEnabled = true
     @AppStorage("copilotEnabled") private var copilotEnabled = false
     @AppStorage("cursorEnabled") private var cursorEnabled = false
 
